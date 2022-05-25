@@ -1,0 +1,13 @@
+wheel
+jupyter
+
+# test
+pytest
+pytest-cov
+pytest-xdist
+
+# lint
+isort
+black
+flake8
+mypy

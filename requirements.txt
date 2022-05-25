@@ -1,0 +1,21 @@
+# ML
+pystan==2.19.1.1  # prophet requirement
+prophet
+neuralprophet
+salesforce-merlion
+
+# core
+numpy
+pandas
+scipy
+statsmodels
+Faker
+pyspark>=3.0.0
+pydeequ
+desert
+marshmallow
+
+# dashboard
+streamlit
+plotly
+matplotlib
