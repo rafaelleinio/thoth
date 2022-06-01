@@ -24,6 +24,7 @@ def _plot_line_plot(
     style: Optional[str] = None,
 ) -> None:
     sns.lineplot(x=x, y=y, data=data, ax=ax, hue=hue, style=style)
+    ax.legend(loc="upper left", bbox_to_anchor=(1, 0.5))
     ax.set(title=title)
     ax.tick_params(rotation=45)
 
@@ -31,16 +32,15 @@ def _plot_line_plot(
 def plot_time_series(time_series: TimeSeries, zoom_n: int = 15) -> None:
     fig, axs = plt.subplots(nrows=2, figsize=(12, 8))
     fig.tight_layout(h_pad=10)
+    base_kwargs = dict(x="ts", y="value")
     _plot_line_plot(
-        x="ts",
-        y="value",
+        **base_kwargs,
         data=pd.DataFrame(time_series.points),
         title=str(time_series.metric),
         ax=axs[0],
     )
     _plot_line_plot(
-        x="ts",
-        y="value",
+        **base_kwargs,
         data=pd.DataFrame(time_series.points[-zoom_n:]),
         title=f"Zoom last {zoom_n} points",
         ax=axs[1],
@@ -56,7 +56,8 @@ def plot_validation_time_series(
         ts: datetime.datetime
         value: float
         color: str
-        style: str
+        style: Optional[str] = None
+        error: Optional[float] = None
 
     true_values = [
         PlotData(point.ts, point.true_value, color="True", style="True")
@@ -69,32 +70,37 @@ def plot_validation_time_series(
             point.predicted,
             color=ts.model_name + " (Model)",
             style="Model",
+            error=point.error,
         )
         for ts in validation_time_series
         for point in ts.points
         if point.predicted
     ]
     values = true_values + predicted_values
+    values_last_n = [p for p in values if p.ts in last_n_ts]
 
-    fig, axs = plt.subplots(nrows=2, figsize=(12, 12))
+    fig, axs = plt.subplots(nrows=3, figsize=(12, 16))
     fig.tight_layout(h_pad=10)
+    base_kwargs = dict(x="ts", y="value", hue="color", style="style")
     _plot_line_plot(
-        x="ts",
-        y="value",
+        **base_kwargs,
         title=str(metric),
-        hue="color",
-        style="style",
         data=pd.DataFrame(data=values),
         ax=axs[0],
     )
     _plot_line_plot(
-        x="ts",
-        y="value",
+        **base_kwargs,
         title=f"Zoom last {zoom_n} points",
-        hue="color",
-        style="style",
-        data=pd.DataFrame(data=[p for p in values if p.ts in last_n_ts]),
+        data=pd.DataFrame(data=values_last_n),
         ax=axs[1],
+    )
+    _plot_line_plot(
+        x="ts",
+        y="error",
+        hue="color",
+        title=f"Model Errors",
+        data=pd.DataFrame(data=predicted_values),
+        ax=axs[2],
     )
     plt.show()
 
