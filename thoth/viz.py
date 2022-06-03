@@ -98,7 +98,7 @@ def plot_validation_time_series(
         x="ts",
         y="error",
         hue="color",
-        title=f"Model Errors",
+        title="Model Errors",
         data=pd.DataFrame(data=predicted_values),
         ax=axs[2],
     )
