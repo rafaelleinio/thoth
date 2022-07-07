@@ -1,3 +1,7 @@
+> ⚠️ **WIP** 👷 - soon to be released to [pypi.org](https://pypi.org)
+
+____
+
 ![](https://i.imgur.com/UJwvBFC.png)
 
 _data quality profiling monitoring tool._
