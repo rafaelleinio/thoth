@@ -4,7 +4,6 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 import pytest
-from merlion.models.automl.autosarima import AutoSarima, AutoSarimaConfig
 
 from thoth.anomaly.base import Point
 from thoth.anomaly.models import (
@@ -13,7 +12,6 @@ from thoth.anomaly.models import (
     ForecastValueError,
     Model,
     SimpleModel,
-    _create_train_data_for_merlion_models,
 )
 
 
@@ -161,67 +159,6 @@ class TestAutoSarimaModel:
 
         # assert
         assert score < 0.18  # less than 18% of absolute percentage error
-
-    def test_bug_autosarima(self):
-        # arrange
-        # points = [
-        #     Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
-        #     Point(ts=datetime.datetime(2022, 1, 2), value=15.1),
-        #     Point(ts=datetime.datetime(2022, 1, 3), value=15.2),
-        #     Point(ts=datetime.datetime(2022, 1, 4), value=15.3),
-        #     Point(ts=datetime.datetime(2022, 1, 5), value=15.4),
-        #     Point(ts=datetime.datetime(2022, 1, 6), value=15.5),
-        #     Point(ts=datetime.datetime(2022, 1, 7), value=15.6),
-        #     Point(ts=datetime.datetime(2022, 1, 8), value=15.7),
-        #     Point(ts=datetime.datetime(2022, 1, 9), value=15.8),
-        #     Point(ts=datetime.datetime(2022, 1, 10), value=15.9),
-        #     Point(ts=datetime.datetime(2022, 1, 11), value=16.0),
-        #     Point(ts=datetime.datetime(2022, 1, 12), value=16.1),
-        #     Point(ts=datetime.datetime(2022, 1, 13), value=16.2),
-        #     Point(ts=datetime.datetime(2022, 1, 14), value=16.3),
-        #     Point(ts=datetime.datetime(2022, 1, 15), value=16.4),
-        # ]
-        points = [
-            Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 2), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 3), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 4), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 5), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 6), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 7), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 8), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 9), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 10), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 11), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 12), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 13), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 14), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 15), value=15.0),
-        ]
-        model = AutoSarima(
-            config=AutoSarimaConfig(
-                auto_pqPQ=True,
-                auto_d=True,
-                auto_D=True,
-                auto_seasonality=True,
-                approximation=True,
-            )
-        )
-
-        # act
-        with pytest.raises(TypeError):
-            model.train(
-                _create_train_data_for_merlion_models(points),
-                train_config={
-                    "enforce_stationarity": True,
-                    "enforce_invertibility": True,
-                },
-            )
-
-        # [output] = _parse_forecast_for_merlion_models(model.forecast(1))
-        #
-        # # assert
-        # assert round(output, 2) == 16.5
 
 
 class TestAutoProphetModel:

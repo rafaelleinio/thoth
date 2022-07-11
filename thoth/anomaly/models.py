@@ -201,12 +201,12 @@ class AutoProphetModel(Model):
             self.model.train(_create_train_data_for_merlion_models(points))
 
     def _forecast(self, n: int = 1) -> List[float]:
-        timestamps = self.model.model.resample_time_stamps(n)
         with warnings.catch_warnings():
             warnings.simplefilter(action="ignore", category=FutureWarning)
-            return _parse_forecast_for_merlion_models(
-                self.model.forecast(time_stamps=timestamps)
-            )
+            forecast = self.model.forecast(
+                n + 1
+            )  # bug in merlion prophet implementation
+            return _parse_forecast_for_merlion_models(forecast)
 
 
 class BaseModelFactory:

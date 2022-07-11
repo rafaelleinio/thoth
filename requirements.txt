@@ -1,8 +1,6 @@
 # ML
-pystan==2.19.1.1  # prophet requirement
-prophet
-neuralprophet
-salesforce-merlion
+prophet>=1.1,<2
+salesforce-merlion>=1.2.3,<2
 
 # core
 numpy
@@ -11,7 +9,6 @@ scipy
 statsmodels
 Faker
 pyspark>=3.0.0,<3.1
-pyspark-stubs
 pydeequ
 desert
 marshmallow

@@ -6,6 +6,7 @@ pytest
 pytest-cov
 pytest-xdist
 pytest-spark
+pytest-env
 
 # lint
 isort
