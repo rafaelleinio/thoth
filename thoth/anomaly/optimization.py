@@ -55,7 +55,7 @@ class DatasetAnomalyOptimizationReport:
     confidence: float
     metric_anomaly_optimization_reports: List[MetricAnomalyOptimizationReport]
 
-    def get_anomaly_metric_config(
+    def get_metric_optimization(
         self, metric: Metric
     ) -> MetricAnomalyOptimizationReport:
         return [

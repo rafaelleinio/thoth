@@ -45,7 +45,7 @@ def score(
     scores = [
         _score_model(
             ts,
-            dataset_anomaly_config.get_anomaly_metric_config(ts.metric),
+            dataset_anomaly_config.get_metric_optimization(ts.metric),
             model_factory,
         )
         for ts in time_series
