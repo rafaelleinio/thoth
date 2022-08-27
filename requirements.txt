@@ -14,6 +14,7 @@ desert
 marshmallow
 
 # repository
+sqlmodel
 sqlalchemy
 pg8000
 
