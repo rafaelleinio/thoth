@@ -55,3 +55,20 @@ def test_assess_quality():
 
     # assert
     assert notification_handler.notifications == 2
+
+
+class TestLogHandler:
+    def test__notify(self, caplog):
+        # arrange
+        handler = quality.LogHandler()
+        ts = datetime.datetime.utcnow()
+
+        # act
+        handler._notify(
+            dataset="my-dataset",
+            ts=ts,
+            anomalous_metrics=[],  # field not needed for this test
+        )
+
+        # assert
+        assert f"Anomaly detected for ts={ts} on dataset=my-dataset!" in caplog.text

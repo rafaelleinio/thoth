@@ -3,7 +3,7 @@ import dataclasses
 import datetime
 from typing import List, Optional
 
-from thoth import anomaly, profiler
+from thoth import anomaly, logging, profiler
 
 
 @dataclasses.dataclass
@@ -38,7 +38,7 @@ class NotificationHandler(abc.ABC):
             dataset=dataset,
             ts=ts,
             anomalous_metrics=anomalous_metrics,
-            dashboard_link=_build_dashboard_link(dataset=dataset)
+            dashboard_link=_build_dashboard_link(dataset=dataset),
         )
 
 
@@ -50,7 +50,13 @@ class LogHandler(NotificationHandler):
         anomalous_metrics: List[AnomalousMetric],
         dashboard_link: Optional[str] = None,
     ) -> None:
-        pass
+        logging.get_logger().error(
+            msg=f"Anomaly detected for ts={ts} on dataset={dataset}!\n"
+            f"The following metrics have scores above the defined threshold by the "
+            f"optimization: {anomalous_metrics}. \n"
+            f"Please check the dataset dashboard for more information: "
+            f"{dashboard_link}"
+        )
 
 
 def assess_quality(
@@ -76,5 +82,5 @@ def assess_quality(
             handler.notify(
                 dataset=anomaly_optimization.dataset,
                 ts=anomaly_scoring.ts,
-                anomalous_metrics=anomalous_metrics
+                anomalous_metrics=anomalous_metrics,
             )

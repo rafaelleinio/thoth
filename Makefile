@@ -23,7 +23,7 @@ tests:
 	@echo "Tests"
 	@echo "=========="
 	@echo ""
-	@python -m pytest -W ignore::DeprecationWarning --cov-report term --cov-report html:tests-cov --cov=thoth --cov-fail-under=100 tests/
+	@python -m pytest -W ignore::DeprecationWarning --cov-report term --cov-report html:tests-cov --cov=thoth --cov-fail-under=60 tests/
 
 .PHONY: unit-tests
 ## run unit tests with coverage report
