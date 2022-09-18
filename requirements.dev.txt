@@ -8,8 +8,11 @@ pytest-xdist
 pytest-spark
 pytest-env
 
-# lint
+# code quality
 isort
 black
-flake8
 mypy
+flake8
+flake8-docstrings
+flake8-print
+flake8-builtins

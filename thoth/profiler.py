@@ -37,12 +37,21 @@ from thoth.util.custom_typing import pydantic_column_type
 class Type2Analyzers:
     """Mapping between a Spark data type and a collection profiling metrics to apply."""
 
-    type: Type[DataType]
+    data_type: Type[DataType]
     analyzers: List[Type[_AnalyzerObject]]
 
 
 class ProfilingBuilder:
-    """Build a set of analyzers to be used in a profiling pipeline."""
+    """Build a set of analyzers to be used in a profiling pipeline.
+
+    The final collection of analyzers to be built is a collection of all analyzers
+    resulted from the type_mappings plus the extra given analyzer objects.
+
+    Attributes:
+        type_mappings: collection of maps between Spark types and profiling metrics.
+        analyzers: extra custom analyzer objects to add to the builder.
+
+    """
 
     def __init__(
         self,
@@ -70,7 +79,7 @@ class ProfilingBuilder:
         for struct_field in structured_fields:
             col_name, col_type = struct_field.name, type(struct_field.dataType)
             for type_mapping in self.type_mappings:
-                if issubclass(col_type, type_mapping.type):
+                if issubclass(col_type, type_mapping.data_type):
                     analyzers += [
                         analyzer_cls(col_name)
                         for analyzer_cls in type_mapping.analyzers
@@ -116,6 +125,15 @@ class DefaultProfilingBuilder(ProfilingBuilder):
 
 
 class Metric(BaseModel):
+    """Keys that define a profiling metric.
+
+    Attributes:
+        entity: "Column" or "Dataset", means the scope of the metric.
+        instance: contains the name of a column or '*' if the dataset is the entity.
+        name: name of the analyzer applied.
+
+    """
+
     entity: str
     instance: str
     name: str
@@ -138,13 +156,27 @@ class Column(BaseModel):
     """Schema of column."""
 
     name: str
-    type: str
+    type_name: str
 
 
 class ProfilingReport(SQLModel, table=True):
-    """Profiling metrics aggregated for a given timestamp for a dataset."""
+    """Profiling metrics aggregated for a given timestamp for a dataset.
 
-    id: str = Field(default=None, primary_key=True)
+    Attributes:
+        id_: unique key for the profiling report.
+            Composed by a hash between using `dataset` and `ts` attributes.
+        dataset: dataset name.
+        ts: temporal reference by which metrics are aggregated.
+        granularity: granularity key indicating the grain of the aggregation.
+            E.g. 'DAY'.
+        profiling_values: collection of profiling aggregated metrics to the timestamp.
+            This is a collection of all profiling metrics calculated for all the columns
+            presented in the dataset for the given timestamp. Each column of the dataset
+            can be described by more than one profiling metric.
+
+    """
+
+    id_profiling: str = Field(default=None, primary_key=True)
     dataset: str
     ts: datetime.datetime
     granularity: str
@@ -153,14 +185,15 @@ class ProfilingReport(SQLModel, table=True):
     )
 
     @classmethod
-    def build_id(cls, dataset: str, ts: datetime.datetime) -> str:
+    def _build_id(cls, dataset: str, ts: datetime.datetime) -> str:
         return sha1(f"{dataset}{ts.isoformat()}".encode("utf-8")).hexdigest()
 
     def __init__(self, **data: Any):
         super().__init__(**data)
-        self.id = self.build_id(self.dataset, self.ts)
+        self.id_profiling = self._build_id(self.dataset, self.ts)
 
     def get_profiling_value(self, metric: Metric) -> ProfilingValue:
+        """Get the profiling value for a given metric."""
         return [
             profiling_value
             for profiling_value in self.profiling_values
@@ -168,6 +201,7 @@ class ProfilingReport(SQLModel, table=True):
         ].pop(0)
 
     def get_metrics(self) -> Set[Metric]:
+        """Get a set of all the metrics presented in the profiling."""
         return set(profiling_value.metric for profiling_value in self.profiling_values)
 
 
@@ -230,8 +264,8 @@ def _build_report(
 
 def profile(
     df: DataFrame,
-    dataset: str,
     ts_column: str,
+    dataset: str,
     profiling_builder: Optional[ProfilingBuilder] = None,
     granularity: Optional[str] = None,
     spark: Optional[SparkSession] = None,
@@ -240,9 +274,10 @@ def profile(
 
     Args:
         df: data to be processed.
-        dataset: unique identification for the dataset.
         ts_column: column name that defines the timestamp.
-        profiling_builder: profiling metrics configuration.
+        dataset: identification for the dataset.
+        profiling_builder: profiling metrics builder configuration.
+            By default, it uses the `DefaultProfilingBuilder`
         granularity: granularity for the ts partitions.
             This granularity is going to be used to transform ts column into
             discrete partitions. By default, it uses a daily granularity.

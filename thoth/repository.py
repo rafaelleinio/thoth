@@ -183,7 +183,7 @@ class SqlRepository(AbstractRepository):
 
     def _add_profiling(self, records: List[ProfilingReport]) -> None:
         for record in records:
-            new_record = self.get_profiling(id_=record.id) or record
+            new_record = self.get_profiling(id_=record.id_profiling) or record
             for key, value in record.dict().items():
                 setattr(new_record, key, value)
             self.session.add(new_record)
@@ -219,7 +219,7 @@ class SqlRepository(AbstractRepository):
 
     def _get_profiling(self, id_: str) -> Optional[ProfilingReport]:
         return self.session.exec(
-            select(ProfilingReport).where(ProfilingReport.id == id_)
+            select(ProfilingReport).where(ProfilingReport.id_profiling == id_)
         ).first()
 
     def _select_scoring(
