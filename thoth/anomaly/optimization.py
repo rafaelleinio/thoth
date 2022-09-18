@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from statistics import fmean
 from typing import Any, List, Optional, Set
+
+from loguru import logger
+from pydantic import BaseModel
+from sqlalchemy import Column as SqlAlchemyColumn
+from sqlmodel import Field, SQLModel
 
 from thoth.anomaly.base import Point, TimeSeries, convert_to_timeseries
 from thoth.anomaly.models import (
@@ -12,24 +17,22 @@ from thoth.anomaly.models import (
     Model,
     SimpleModelFactory,
 )
-from thoth.logging import get_logger
 from thoth.profiler import Metric, ProfilingReport
+from thoth.util.custom_typing import pydantic_column_type
 
 
 class OptimizationFailedError(Exception):
     pass
 
 
-@dataclass
-class ValidationPoint:
+class ValidationPoint(BaseModel):
     ts: datetime.datetime
     true_value: float
     predicted: Optional[float] = None
     error: Optional[float] = None
 
 
-@dataclass
-class ValidationTimeSeries:
+class ValidationTimeSeries(BaseModel):
     model_name: str
     points: List[ValidationPoint]
     mean_error: float
@@ -40,8 +43,7 @@ class ValidationTimeSeries:
         return (self.threshold, self.mean_error) < (other.threshold, self.mean_error)
 
 
-@dataclass
-class MetricAnomalyOptimizationReport:
+class MetricOptimization(BaseModel):
     metric: Metric
     best_model_name: str
     threshold: float
@@ -49,25 +51,23 @@ class MetricAnomalyOptimizationReport:
     window: Optional[Any] = None
 
 
-@dataclass
-class DatasetAnomalyOptimizationReport:
-    dataset: str
+class AnomalyOptimization(SQLModel, table=True):
+    dataset: str = Field(primary_key=True)
     confidence: float
-    metric_anomaly_optimization_reports: List[MetricAnomalyOptimizationReport]
+    metric_optimizations: List[MetricOptimization] = Field(
+        sa_column=SqlAlchemyColumn(pydantic_column_type(List[MetricOptimization]))
+    )
 
-    def get_metric_optimization(
-        self, metric: Metric
-    ) -> MetricAnomalyOptimizationReport:
+    def get_metric_optimization(self, metric: Metric) -> MetricOptimization:
         return [
             metric_config
-            for metric_config in self.metric_anomaly_optimization_reports
+            for metric_config in self.metric_optimizations
             if metric_config.metric == metric
         ].pop(0)
 
     def get_metrics(self) -> Set[Metric]:
         return set(
-            profiling_value.metric
-            for profiling_value in self.metric_anomaly_optimization_reports
+            profiling_value.metric for profiling_value in self.metric_optimizations
         )
 
 
@@ -124,17 +124,18 @@ def _validate_last_ts(
         return validation_point
     model.reset()
     predicted, error = model.score(points=points)
-    get_logger().info(f"Finished validation for ts={points[-1].ts.isoformat()}.")
-    return replace(validation_point, predicted=predicted, error=error)
+    logger.debug(f"Finished validation for ts={points[-1].ts.isoformat()}.")
+    return ValidationPoint(
+        **validation_point.dict(exclude_unset=True), predicted=predicted, error=error
+    )
 
 
 def _forward_chaining_cross_validation(
     points: List[Point], model: Model, start_proportion: float, confidence: float
 ) -> ValidationTimeSeries:
-    logger = get_logger()
-    logger.info(f"Cross validation for model {model.__name__} started ...")
+    logger.debug(f"Cross validation for model {type(model).__name__} started ...")
     start_ts = points[int(start_proportion * len(points))].ts
-    logger.info(
+    logger.debug(
         f"Validating {int((1 - start_proportion) * len(points))} timestamps from "
         f"{start_ts.isoformat()} to {points[-1].ts.isoformat()}."
     )
@@ -146,14 +147,14 @@ def _forward_chaining_cross_validation(
     thresholds_proportion = _find_best_threshold(
         validation_points=validation_points, confidence=confidence
     )
-    logger.info(
+    logger.debug(
         f"Results: mean error = {mean_error}, "
         f"minimum threshold = {thresholds_proportion.threshold}, points "
         f"below threshold = {thresholds_proportion.below_threshold_proportion}"
     )
-    logger.info(f"Cross validation for model {model.__name__} finished!")
+    logger.debug(f"Cross validation for model {type(model).__name__} finished!")
     return ValidationTimeSeries(
-        model_name=model.__name__,
+        model_name=type(model).__name__,
         points=validation_points,
         mean_error=mean_error,
         threshold=thresholds_proportion.threshold,
@@ -193,8 +194,7 @@ def _optimize_time_series(
     confidence: float,
     model_factory: BaseModelFactory,
     start_proportion: float,
-) -> MetricAnomalyOptimizationReport:
-    logger = get_logger()
+) -> MetricOptimization:
     logger.info(f"Optimizing for metric = {ts.metric} started...")
     if _is_time_series_constant(ts):
         logger.info("Time series is constant, using optimized model_factory...")
@@ -214,7 +214,7 @@ def _optimize_time_series(
     )
 
     logger.info(f"Optimizing for metric = {ts.metric} finished!")
-    return MetricAnomalyOptimizationReport(
+    return MetricOptimization(
         metric=ts.metric,
         best_model_name=best_model_threshold.model_name,
         threshold=best_model_threshold.threshold,
@@ -224,26 +224,26 @@ def _optimize_time_series(
 
 def optimize(
     profiling_history: List[ProfilingReport],
-    start_proportion: float = 0.5,
-    confidence: float = 0.95,
-    model_factory: BaseModelFactory = DefaultModelFactory(),
-) -> DatasetAnomalyOptimizationReport:
-    logger = get_logger()
+    start_proportion: Optional[float] = None,
+    confidence: Optional[float] = None,
+    model_factory: Optional[BaseModelFactory] = None,
+) -> AnomalyOptimization:
     logger.info("📈️ Optimization started ...")
+    confidence = confidence or 0.95
     last_profiling_report = profiling_history[-1]
     time_series = convert_to_timeseries(profiling_history)
     metric_anomaly_optimization_report = [
         _optimize_time_series(
             ts=ts,
             confidence=confidence,
-            model_factory=model_factory,
-            start_proportion=start_proportion,
+            model_factory=model_factory or DefaultModelFactory(),
+            start_proportion=start_proportion or 0.5,
         )
         for ts in time_series
     ]
     logger.info("📈 Optimization finished !")
-    return DatasetAnomalyOptimizationReport(
+    return AnomalyOptimization(
         dataset=last_profiling_report.dataset,
         confidence=confidence,
-        metric_anomaly_optimization_reports=metric_anomaly_optimization_report,
+        metric_optimizations=metric_anomaly_optimization_report,
     )

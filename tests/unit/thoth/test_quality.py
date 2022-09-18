@@ -18,15 +18,15 @@ class MockNotificationHandler(quality.NotificationHandler):
         self.notifications += 1
 
 
-def test_assess_quality():
+def test_assess_quality_error():
     # arrange
     notification_handler = MockNotificationHandler()
     metric = profiler.Metric(entity="Column", instance="f1", name="Mean")
-    anomaly_optimization = anomaly.optimization.DatasetAnomalyOptimizationReport(
+    anomaly_optimization = anomaly.optimization.AnomalyOptimization(
         dataset="my-dataset",
         confidence=0.95,
-        metric_anomaly_optimization_reports=[
-            anomaly.optimization.MetricAnomalyOptimizationReport(
+        metric_optimizations=[
+            anomaly.optimization.MetricOptimization(
                 metric=metric,
                 best_model_name="best-model",
                 threshold=0.15,
@@ -47,7 +47,7 @@ def test_assess_quality():
     )
 
     # act
-    quality.assess_quality(
+    success = quality.assess_quality(
         anomaly_optimization=anomaly_optimization,
         anomaly_scoring=anomaly_scoring,
         notification_handlers=[notification_handler, notification_handler],
@@ -55,6 +55,44 @@ def test_assess_quality():
 
     # assert
     assert notification_handler.notifications == 2
+    assert success is False
+
+
+def test_assess_quality_success():
+    # arrange
+    metric = profiler.Metric(entity="Column", instance="f1", name="Mean")
+    anomaly_optimization = anomaly.optimization.AnomalyOptimization(
+        dataset="my-dataset",
+        confidence=0.95,
+        metric_optimizations=[
+            anomaly.optimization.MetricOptimization(
+                metric=metric,
+                best_model_name="best-model",
+                threshold=0.15,
+                validation_results=[],  # field not needed for this test
+            ),
+        ],
+    )
+    anomaly_scoring = anomaly.AnomalyScoring(
+        dataset="best-model",
+        ts=datetime.datetime.utcnow(),
+        scores=[
+            anomaly.Score(
+                metric=metric,
+                value=0.14,
+                predicted=84,
+            )
+        ],
+    )
+
+    # act
+    success = quality.assess_quality(
+        anomaly_optimization=anomaly_optimization,
+        anomaly_scoring=anomaly_scoring,
+    )
+
+    # assert
+    assert success is True
 
 
 class TestLogHandler:

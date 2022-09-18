@@ -19,8 +19,6 @@ class ForecastValueError(Exception):
 
 
 class Model(ABC):
-    __name__ = "Base"
-
     @abstractmethod
     def _train(self, points: List[Point]) -> None:
         """."""
@@ -61,17 +59,16 @@ class Model(ABC):
 
 
 class SimpleModel(Model):
-    __name__ = "Simple"
-
     def __init__(self, windows: Optional[List[int]] = None):
         self.windows = windows or [3, 5, 7, 30]
         self.best_window: Optional[int] = None
-        self.train_data_pdf: pd.DataFrame = None
+        self.train_data_pdf: Optional[pd.DataFrame] = None
         self.skip_windows: List[int] = []
 
     def _reset(self) -> None:
         self.best_window = None
         self.train_data_pdf = None
+        self.windows = self.windows + self.skip_windows
         self.skip_windows = []
 
     def _add_windows_and_errors(
@@ -98,9 +95,10 @@ class SimpleModel(Model):
                 f"shortest window (range={shortest_window})."
             )
         self.skip_windows = [w for w in sorted_windows if w >= train_length]
+        self.windows = [w for w in self.windows if w not in self.skip_windows]
 
     def _train(self, points: List[Point]) -> None:
-        # self._check_series_length(points)
+        self._check_series_length(points)
         self.train_data_pdf = pd.DataFrame(
             [dataclasses.asdict(point) for point in points]
         )
@@ -119,7 +117,7 @@ class SimpleModel(Model):
             raise NotImplementedError(
                 "This model only supports the forecast window of n=1"
             )
-        if not self.best_window:
+        if not self.best_window or self.train_data_pdf is None:
             raise RuntimeError("Model must be trained first.")
 
         train_df_with_empty_row_in_the_end_pdf = pd.concat(
@@ -158,8 +156,6 @@ def _parse_forecast_for_merlion_models(args: Any) -> List[float]:
 
 
 class AutoSarimaModel(Model):
-    __name__ = "AutoSarima"
-
     def __init__(self, auto_sarima_model: Optional[AutoSarima] = None):
         self.model = auto_sarima_model or AutoSarima(
             config=AutoSarimaConfig(
@@ -185,8 +181,6 @@ class AutoSarimaModel(Model):
 
 
 class AutoProphetModel(Model):
-    __name__ = "AutoProphet"
-
     def __init__(self, auto_prophet_model: Optional[AutoProphet] = None):
         self.model: AutoProphet = auto_prophet_model or AutoProphet(
             config=AutoProphetConfig()
@@ -203,9 +197,7 @@ class AutoProphetModel(Model):
     def _forecast(self, n: int = 1) -> List[float]:
         with warnings.catch_warnings():
             warnings.simplefilter(action="ignore", category=FutureWarning)
-            forecast = self.model.forecast(
-                n + 1
-            )  # bug in merlion prophet implementation
+            forecast = self.model.forecast(n)
             return _parse_forecast_for_merlion_models(forecast)
 
 

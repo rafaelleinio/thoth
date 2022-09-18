@@ -20,15 +20,15 @@ class TestAnomalyScoring:
             ],
         )
 
-        anomaly_config = thoth.anomaly.optimization.DatasetAnomalyOptimizationReport(
+        anomaly_config = thoth.anomaly.optimization.AnomalyOptimization(
             dataset="my_dataset",
             confidence=0.95,
-            metric_anomaly_optimization_reports=[
-                thoth.anomaly.optimization.MetricAnomalyOptimizationReport(
+            metric_optimizations=[
+                thoth.anomaly.optimization.MetricOptimization(
                     metric=base_profiling_history[0].profiling_values[0].metric,
                     best_model_name="SimpleModel",
                     threshold=0.2,
-                    validation_results=None,
+                    validation_results=[],
                 )
             ],
         )
@@ -36,7 +36,7 @@ class TestAnomalyScoring:
         # act
         output_anomaly_scoring = anomaly.score(
             profiling_history=base_profiling_history,
-            dataset_anomaly_config=anomaly_config,
+            optimization=anomaly_config,
         )
 
         # assert
@@ -59,7 +59,7 @@ class TestAnomalyScoring:
 
         # act
         output_time_series = thoth.anomaly.base.convert_to_timeseries(
-            history=base_profiling_history,
+            profiling=base_profiling_history,
         )
 
         # assert

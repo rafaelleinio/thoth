@@ -140,6 +140,14 @@ class TestSimpleModel:
         with pytest.raises(ValueError):
             _ = model._check_series_length(train_points=input_points)
 
+    def test__forecast_error(self):
+        # arrange
+        model = SimpleModel()
+
+        # act and assert
+        with pytest.raises(RuntimeError):
+            model.forecast(n=1)
+
 
 class TestAutoSarimaModel:
     def test_score(self, json_data):

@@ -146,3 +146,12 @@ def test_profile(spark_context, spark_session):
             ],
         ),
     ]
+
+
+class TestProfilingReport:
+    def test_get_metrics(self, base_profiling_history):
+        # act
+        output = base_profiling_history[0].get_metrics()
+
+        # assert
+        assert output == {Metric(entity="Column", instance="f1", name="Mean")}

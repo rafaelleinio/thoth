@@ -1,9 +1,11 @@
 import abc
 import dataclasses
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
-from thoth import anomaly, logging, profiler
+from loguru import logger
+
+from thoth import anomaly, profiler
 
 
 @dataclasses.dataclass
@@ -25,7 +27,7 @@ class NotificationHandler(abc.ABC):
         ts: datetime.datetime,
         anomalous_metrics: List[AnomalousMetric],
         dashboard_link: Optional[str] = None,
-    ):
+    ) -> None:
         """Child class must implement warn logic."""
 
     def notify(
@@ -50,8 +52,8 @@ class LogHandler(NotificationHandler):
         anomalous_metrics: List[AnomalousMetric],
         dashboard_link: Optional[str] = None,
     ) -> None:
-        logging.get_logger().error(
-            msg=f"Anomaly detected for ts={ts} on dataset={dataset}!\n"
+        logger.error(
+            f"Anomaly detected for ts={ts} on dataset={dataset}!\n"
             f"The following metrics have scores above the defined threshold by the "
             f"optimization: {anomalous_metrics}. \n"
             f"Please check the dataset dashboard for more information: "
@@ -60,10 +62,11 @@ class LogHandler(NotificationHandler):
 
 
 def assess_quality(
-    anomaly_optimization: anomaly.optimization.DatasetAnomalyOptimizationReport,
+    anomaly_optimization: anomaly.optimization.AnomalyOptimization,
     anomaly_scoring: anomaly.AnomalyScoring,
-    notification_handlers: List[NotificationHandler],
-) -> None:
+    notification_handlers: Optional[Sequence[NotificationHandler]] = None,
+) -> bool:
+    logger.info(f"🔍️ Assessing quality for ts={anomaly_scoring.ts} ...")
     metrics = [
         AnomalousMetric(
             metric=score.metric,
@@ -78,9 +81,14 @@ def assess_quality(
         metric for metric in metrics if metric.score > metric.threshold
     ]
     if anomalous_metrics:
-        for handler in notification_handlers:
+        logger.error("Anomaly detected, notifying handlers...")
+        for handler in notification_handlers or [LogHandler()]:
             handler.notify(
                 dataset=anomaly_optimization.dataset,
                 ts=anomaly_scoring.ts,
                 anomalous_metrics=anomalous_metrics,
             )
+        logger.info("🔍️ Quality assessment finished, handlers notified!")
+        return False
+    logger.info("🔍️ Quality assessment finished, everything good! 🍰 ✨")
+    return True

@@ -1,5 +1,21 @@
-from thoth.anomaly.optimization import optimize
-from thoth.anomaly.scoring import score
-from thoth.profiler import profile
+from thoth import (
+    __metadata__,
+    anomaly,
+    profiler,
+    quality,
+    repository,
+    service_layer,
+    testing,
+    util,
+)
 
-__all__ = ["optimize", "score", "profile"]
+__all__ = [
+    "__metadata__",
+    "anomaly",
+    "profiler",
+    "quality",
+    "repository",
+    "service_layer",
+    "testing",
+    "util",
+]

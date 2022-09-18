@@ -7,10 +7,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from thoth.anomaly.base import TimeSeries
-from thoth.anomaly.optimization import (
-    DatasetAnomalyOptimizationReport,
-    ValidationTimeSeries,
-)
+from thoth.anomaly.optimization import AnomalyOptimization, ValidationTimeSeries
 from thoth.profiler import Metric
 
 
@@ -106,7 +103,7 @@ def plot_validation_time_series(
 
 
 def tabulate_optimization_report_best_model(
-    report: DatasetAnomalyOptimizationReport,
+    report: AnomalyOptimization,
 ) -> pd.DataFrame:
     @dataclass
     class Table:
@@ -121,13 +118,13 @@ def tabulate_optimization_report_best_model(
                 metric_report.best_model_name,
                 metric_report.threshold,
             )
-            for metric_report in report.metric_anomaly_optimization_reports
+            for metric_report in report.metric_optimizations
         ]
     )
 
 
 def tabulate_optimization_report_scores(
-    report: DatasetAnomalyOptimizationReport,
+    report: AnomalyOptimization,
 ) -> pd.DataFrame:
     @dataclass
     class Table:
@@ -146,7 +143,7 @@ def tabulate_optimization_report_scores(
                 validation_time_series.threshold,
                 validation_time_series.below_threshold_proportion,
             )
-            for metric_report in report.metric_anomaly_optimization_reports
+            for metric_report in report.metric_optimizations
             for validation_time_series in metric_report.validation_results
         ]
     )

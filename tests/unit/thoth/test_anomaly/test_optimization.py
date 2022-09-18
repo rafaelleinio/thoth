@@ -5,6 +5,8 @@ import pytest
 from thoth.anomaly.base import Point, TimeSeries
 from thoth.anomaly.models import AutoSarimaModel, BaseModelFactory
 from thoth.anomaly.optimization import (
+    AnomalyOptimization,
+    MetricOptimization,
     OptimizationFailedError,
     ValidationPoint,
     ValidationTimeSeries,
@@ -177,7 +179,7 @@ def test__select_best_model_exception():
 def test__optimize_time_series_constant_flow():
     # arrange
     input_ts = TimeSeries(
-        metric=None,  # not relevant for this test specifically
+        metric=Metric(entity="Column", instance="f1", name="Mean"),
         points=[
             Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
             Point(ts=datetime.datetime(2022, 1, 2), value=15.0),
@@ -203,5 +205,29 @@ def test__optimize_time_series_constant_flow():
     )
 
     # assert
-    assert metric_anomaly_optimization_report.best_model_name == "Simple"
+    assert metric_anomaly_optimization_report.best_model_name == "SimpleModel"
     assert metric_anomaly_optimization_report.threshold == 0.01
+
+
+class TestAnomalyOptimization:
+    def test_get_metrics(self):
+        # arrange
+        target = Metric(entity="Column", instance="f1", name="Mean")
+        anomaly_optimization = AnomalyOptimization(
+            dataset="my-dataset",
+            confidence=0.95,
+            metric_optimizations=[
+                MetricOptimization(
+                    metric=target,
+                    best_model_name="SimpleModel",
+                    threshold=0.25,
+                    validation_results=[],
+                )
+            ],
+        )
+
+        # act
+        [output] = anomaly_optimization.get_metrics()
+
+        # assert
+        assert output == target

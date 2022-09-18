@@ -5,13 +5,15 @@ salesforce-merlion>=1.2.3,<2
 # core
 numpy
 pandas
-scipy
-statsmodels
-Faker
 pyspark>=3.0.0,<3.1
 pydeequ
-desert
-marshmallow
+pydantic
+
+# util
+loguru
+
+# dataset generation
+Faker
 
 # repository
 sqlmodel

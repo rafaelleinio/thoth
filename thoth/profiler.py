@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import datetime
 import functools
-import uuid
 from dataclasses import dataclass
-from typing import List, Optional, Set, Type, Union
+from hashlib import sha1
+from typing import Any, List, Optional, Set, Type, Union
 
+from loguru import logger
+from pydantic import BaseModel
 from pydeequ.analyzers import (
     AnalysisRunner,
     AnalyzerContext,
@@ -25,8 +27,10 @@ from pyspark.sql import Column as SparkColumn
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, NumericType, StringType, StructField
+from sqlalchemy import Column as SqlAlchemyColumn
+from sqlmodel import Field, SQLModel
 
-from thoth.logging import get_logger
+from thoth.util.custom_typing import pydantic_column_type
 
 
 @dataclass
@@ -111,38 +115,50 @@ class DefaultProfilingBuilder(ProfilingBuilder):
         )
 
 
-@dataclass(frozen=True, eq=True, order=True)
-class Metric:
+class Metric(BaseModel):
     entity: str
     instance: str
     name: str
 
+    def __lt__(self, other: Metric) -> bool:
+        return tuple(self.dict().values()) < tuple(other.dict().values())
 
-@dataclass
-class ProfilingValue:
+    def __hash__(self) -> int:
+        return hash(self.entity + self.instance + self.name)
+
+
+class ProfilingValue(BaseModel):
     """Metrics schema from pydeequ."""
 
     metric: Metric
     value: float
 
 
-@dataclass
-class Column:
+class Column(BaseModel):
     """Schema of column."""
 
     name: str
     type: str
 
 
-@dataclass
-class ProfilingReport:
-    """Execution metadata and profiling metrics for given timestamp."""
+class ProfilingReport(SQLModel, table=True):
+    """Profiling metrics aggregated for a given timestamp for a dataset."""
 
-    uuid: str
+    id: str = Field(default=None, primary_key=True)
     dataset: str
     ts: datetime.datetime
     granularity: str
-    profiling_values: List[ProfilingValue]
+    profiling_values: List[ProfilingValue] = Field(
+        sa_column=SqlAlchemyColumn(pydantic_column_type(List[ProfilingValue]))
+    )
+
+    @classmethod
+    def build_id(cls, dataset: str, ts: datetime.datetime) -> str:
+        return sha1(f"{dataset}{ts.isoformat()}".encode("utf-8")).hexdigest()
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        self.id = self.build_id(self.dataset, self.ts)
 
     def get_profiling_value(self, metric: Metric) -> ProfilingValue:
         return [
@@ -192,9 +208,8 @@ def _build_report(
     metrics = AnalyzerContext.successMetricsAsJson(
         spark_session=spark, analyzerContext=analyzer_context
     )
-    get_logger().info(f"Finished profiling report for ts={ts.isoformat()}.")
-    return ProfilingReport(
-        uuid=str(uuid.uuid4()),
+    logger.info(f"Finished profiling report for ts={ts.isoformat()}.")
+    profiling = ProfilingReport(
         dataset=dataset,
         ts=ts,
         granularity=granularity,
@@ -210,6 +225,7 @@ def _build_report(
             for record in metrics
         ],
     )
+    return profiling
 
 
 def profile(
@@ -217,7 +233,7 @@ def profile(
     dataset: str,
     ts_column: str,
     profiling_builder: Optional[ProfilingBuilder] = None,
-    granularity: str = Granularity.DAY,
+    granularity: Optional[str] = None,
     spark: Optional[SparkSession] = None,
 ) -> List[ProfilingReport]:
     """Run a profiling pipeline on a given dataset.
@@ -229,16 +245,16 @@ def profile(
         profiling_builder: profiling metrics configuration.
         granularity: granularity for the ts partitions.
             This granularity is going to be used to transform ts column into
-            discrete partitions.
+            discrete partitions. By default, it uses a daily granularity.
         spark: spark context.
 
     Returns:
         set of profiling reports for each ts partition.
 
     """
-    logger = get_logger()
     logger.info("👤 Profiling started ...")
     spark = spark or SparkSession.builder.getOrCreate()
+    granularity = granularity or Granularity.DAY
     ts_transformed_df = _transform_ts_granularity(
         df=df, ts_column=ts_column, granularity=granularity
     )
@@ -252,7 +268,7 @@ def profile(
         f"Processing {len(ts_values)} timestamps from {ts_values[0].isoformat()} to "
         f"{ts_values[-1].isoformat()}, with {granularity} granularity."
     )
-    profiling_reports = [
+    profiling = [
         _build_report(
             profiling_builder=profiling_builder or DefaultProfilingBuilder(),
             dataset=dataset,
@@ -266,4 +282,4 @@ def profile(
         for ts_value in ts_values
     ]
     logger.info("👤 Profiling done!")
-    return profiling_reports
+    return profiling

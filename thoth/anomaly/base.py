@@ -22,8 +22,8 @@ class TimeSeries:
         return self.metric < other.metric
 
 
-def convert_to_timeseries(history: List[ProfilingReport]) -> List[TimeSeries]:
-    last_report = history[-1]
+def convert_to_timeseries(profiling: List[ProfilingReport]) -> List[TimeSeries]:
+    last_report = profiling[-1]
     metrics = [
         profiling_value.metric for profiling_value in last_report.profiling_values
     ]
@@ -33,7 +33,7 @@ def convert_to_timeseries(history: List[ProfilingReport]) -> List[TimeSeries]:
                 metric=metric,
                 points=[
                     Point(ts=report.ts, value=report.get_profiling_value(metric).value)
-                    for report in history
+                    for report in profiling
                 ],
             )
             for metric in metrics
