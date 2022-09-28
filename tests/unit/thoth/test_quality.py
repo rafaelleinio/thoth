@@ -10,9 +10,9 @@ class MockNotificationHandler(quality.NotificationHandler):
 
     def _notify(
         self,
-        dataset: str,
+        dataset_uri: str,
         ts: datetime.datetime,
-        anomalous_metrics: List[quality.AnomalousMetric],
+        anomalous_scores: List[quality.AnomalousScore],
         dashboard_link: Optional[str] = None,
     ):
         self.notifications += 1
@@ -23,7 +23,7 @@ def test_assess_quality_error():
     notification_handler = MockNotificationHandler()
     metric = profiler.Metric(entity="Column", instance="f1", name="Mean")
     anomaly_optimization = anomaly.optimization.AnomalyOptimization(
-        dataset="my-dataset",
+        dataset_uri="my-dataset",
         confidence=0.95,
         metric_optimizations=[
             anomaly.optimization.MetricOptimization(
@@ -35,7 +35,7 @@ def test_assess_quality_error():
         ],
     )
     anomaly_scoring = anomaly.AnomalyScoring(
-        dataset="best-model",
+        dataset_uri="best-model",
         ts=datetime.datetime.utcnow(),
         scores=[
             anomaly.Score(
@@ -62,7 +62,7 @@ def test_assess_quality_success():
     # arrange
     metric = profiler.Metric(entity="Column", instance="f1", name="Mean")
     anomaly_optimization = anomaly.optimization.AnomalyOptimization(
-        dataset="my-dataset",
+        dataset_uri="my-dataset",
         confidence=0.95,
         metric_optimizations=[
             anomaly.optimization.MetricOptimization(
@@ -74,7 +74,7 @@ def test_assess_quality_success():
         ],
     )
     anomaly_scoring = anomaly.AnomalyScoring(
-        dataset="best-model",
+        dataset_uri="best-model",
         ts=datetime.datetime.utcnow(),
         scores=[
             anomaly.Score(
@@ -103,10 +103,10 @@ class TestLogHandler:
 
         # act
         handler._notify(
-            dataset="my-dataset",
+            dataset_uri="my-dataset",
             ts=ts,
-            anomalous_metrics=[],  # field not needed for this test
+            anomalous_scores=[],  # field not needed for this test
         )
 
         # assert
-        assert f"Anomaly detected for ts={ts} on dataset=my-dataset!" in caplog.text
+        assert f"Anomaly detected for ts={ts} on dataset_uri=my-dataset!" in caplog.text

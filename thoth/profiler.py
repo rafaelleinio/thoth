@@ -94,7 +94,7 @@ class DefaultProfilingBuilder(ProfilingBuilder):
         super().__init__(
             type_mappings=[
                 Type2Analyzers(
-                    type=NumericType,
+                    data_type=NumericType,
                     analyzers=[
                         Mean,
                         StandardDeviation,
@@ -106,13 +106,13 @@ class DefaultProfilingBuilder(ProfilingBuilder):
                     ],
                 ),
                 Type2Analyzers(
-                    type=DataType,
+                    data_type=DataType,
                     analyzers=[
                         Completeness,
                     ],
                 ),
                 Type2Analyzers(
-                    type=StringType,
+                    data_type=StringType,
                     analyzers=[
                         MinLength,
                         MaxLength,
@@ -163,9 +163,9 @@ class ProfilingReport(SQLModel, table=True):
     """Profiling metrics aggregated for a given timestamp for a dataset.
 
     Attributes:
-        id_: unique key for the profiling report.
+        id_profiling: unique key for the profiling report.
             Composed by a hash between using `dataset` and `ts` attributes.
-        dataset: dataset name.
+        dataset_uri: dataset URI.
         ts: temporal reference by which metrics are aggregated.
         granularity: granularity key indicating the grain of the aggregation.
             E.g. 'DAY'.
@@ -177,7 +177,7 @@ class ProfilingReport(SQLModel, table=True):
     """
 
     id_profiling: str = Field(default=None, primary_key=True)
-    dataset: str
+    dataset_uri: str
     ts: datetime.datetime
     granularity: str
     profiling_values: List[ProfilingValue] = Field(
@@ -185,12 +185,12 @@ class ProfilingReport(SQLModel, table=True):
     )
 
     @classmethod
-    def _build_id(cls, dataset: str, ts: datetime.datetime) -> str:
-        return sha1(f"{dataset}{ts.isoformat()}".encode("utf-8")).hexdigest()
+    def _build_id(cls, dataset_uri: str, ts: datetime.datetime) -> str:
+        return sha1(f"{dataset_uri}{ts.isoformat()}".encode("utf-8")).hexdigest()
 
     def __init__(self, **data: Any):
         super().__init__(**data)
-        self.id_profiling = self._build_id(self.dataset, self.ts)
+        self.id_profiling = self._build_id(self.dataset_uri, self.ts)
 
     def get_profiling_value(self, metric: Metric) -> ProfilingValue:
         """Get the profiling value for a given metric."""
@@ -201,12 +201,12 @@ class ProfilingReport(SQLModel, table=True):
         ].pop(0)
 
     def get_metrics(self) -> Set[Metric]:
-        """Get a set of all the metrics presented in the profiling."""
+        """Get the set of all the metrics presented in the profiling."""
         return set(profiling_value.metric for profiling_value in self.profiling_values)
 
 
 class Granularity:
-    """Describe possible granularities for timestamp partitions."""
+    """Describe possible granularity for timestamp partitions."""
 
     DAY = "DAY"
 
@@ -226,7 +226,7 @@ def _transform_ts_granularity(
 
 def _build_report(
     profiling_builder: ProfilingBuilder,
-    dataset: str,
+    dataset_uri: str,
     single_partition_df: DataFrame,
     ts: datetime.datetime,
     granularity: str,
@@ -244,7 +244,7 @@ def _build_report(
     )
     logger.info(f"Finished profiling report for ts={ts.isoformat()}.")
     profiling = ProfilingReport(
-        dataset=dataset,
+        dataset_uri=dataset_uri,
         ts=ts,
         granularity=granularity,
         profiling_values=[
@@ -265,7 +265,7 @@ def _build_report(
 def profile(
     df: DataFrame,
     ts_column: str,
-    dataset: str,
+    dataset_uri: str,
     profiling_builder: Optional[ProfilingBuilder] = None,
     granularity: Optional[str] = None,
     spark: Optional[SparkSession] = None,
@@ -275,7 +275,7 @@ def profile(
     Args:
         df: data to be processed.
         ts_column: column name that defines the timestamp.
-        dataset: identification for the dataset.
+        dataset_uri: dataset URI.
         profiling_builder: profiling metrics builder configuration.
             By default, it uses the `DefaultProfilingBuilder`
         granularity: granularity for the ts partitions.
@@ -306,7 +306,7 @@ def profile(
     profiling = [
         _build_report(
             profiling_builder=profiling_builder or DefaultProfilingBuilder(),
-            dataset=dataset,
+            dataset_uri=dataset_uri,
             single_partition_df=ts_transformed_df.where(
                 F.col(ts_column) == F.lit(ts_value)
             ),

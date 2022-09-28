@@ -97,7 +97,7 @@ def test_profile(spark_context, spark_session):
     with mock.patch("uuid.uuid4", side_effect=lambda: "uuid"):
         profiling_report = profile(
             profiling_builder=profiling_builder,
-            dataset="ds",
+            dataset_uri="ds",
             df=df,
             ts_column="ts",
             spark=spark_session,
@@ -106,8 +106,7 @@ def test_profile(spark_context, spark_session):
     # assert
     assert profiling_report == [
         ProfilingReport(
-            uuid="uuid",
-            dataset="ds",
+            dataset_uri="ds",
             ts=datetime.datetime(2022, 4, 1),
             granularity=Granularity.DAY,
             profiling_values=[
@@ -126,8 +125,7 @@ def test_profile(spark_context, spark_session):
             ],
         ),
         ProfilingReport(
-            uuid="uuid",
-            dataset="ds",
+            dataset_uri="ds",
             ts=datetime.datetime(2022, 4, 2),
             granularity=Granularity.DAY,
             profiling_values=[

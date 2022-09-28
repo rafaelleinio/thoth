@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import Column as SqlAlchemyColumn
 from sqlmodel import Field, SQLModel
 
-from thoth.anomaly.base import TimeSeries, convert_to_timeseries
+from thoth.anomaly.base import _convert_to_timeseries, _TimeSeries
 from thoth.anomaly.models import BaseModelFactory, DefaultModelFactory
 from thoth.anomaly.optimization import AnomalyOptimization, MetricOptimization
 from thoth.profiler import Metric, ProfilingReport
@@ -15,30 +15,39 @@ from thoth.util.custom_typing import pydantic_column_type
 
 
 class Score(BaseModel):
+    """Holds the score and predicted value for a given metric."""
+
     metric: Metric
     value: float
     predicted: float
 
 
 class AnomalyScoring(SQLModel, table=True):
-    id: str = Field(default=None, primary_key=True)
-    dataset: str
+    """Represents a data quality scoring event for a given dataset and timestamp.
+
+    This model holds scores for all the profiling metrics found in the dataset, but just
+    for one specific timestamp.
+
+    """
+
+    id_: str = Field(default=None, primary_key=True)
+    dataset_uri: str
     ts: datetime.datetime
     scores: List[Score] = Field(
         sa_column=SqlAlchemyColumn(pydantic_column_type(List[Score]))
     )
 
     @classmethod
-    def build_id(cls, dataset: str, ts: datetime.datetime) -> str:
-        return sha1(f"{dataset}{ts.isoformat()}".encode("utf-8")).hexdigest()
+    def _build_id(cls, dataset_uri: str, ts: datetime.datetime) -> str:
+        return sha1(f"{dataset_uri}{ts.isoformat()}".encode("utf-8")).hexdigest()
 
     def __init__(self, **data: Any):
         super().__init__(**data)
-        self.id = self.build_id(self.dataset, self.ts)
+        self.id_ = self._build_id(self.dataset_uri, self.ts)
 
 
 def _score_model(
-    time_series: TimeSeries,
+    time_series: _TimeSeries,
     metric_optimization: MetricOptimization,
     model_factory: BaseModelFactory,
 ) -> Score:
@@ -60,9 +69,10 @@ def score(
     optimization: AnomalyOptimization,
     model_factory: Optional[BaseModelFactory] = None,
 ) -> AnomalyScoring:
+    """Calculate the anomaly score for a target dataset timestamp batch."""
     logger.info("💯 Scoring started...")
     last_profiling_report = profiling_history[-1]
-    metrics_ts = convert_to_timeseries(profiling_history)
+    metrics_ts = _convert_to_timeseries(profiling_history)
     scores = [
         _score_model(
             time_series=metric_ts,
@@ -72,7 +82,7 @@ def score(
         for metric_ts in metrics_ts
     ]
     anomaly_scoring = AnomalyScoring(
-        dataset=last_profiling_report.dataset,
+        dataset_uri=last_profiling_report.dataset_uri,
         ts=last_profiling_report.ts,
         scores=scores,
     )

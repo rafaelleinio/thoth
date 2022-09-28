@@ -9,53 +9,72 @@ from thoth import anomaly, profiler
 
 
 @dataclasses.dataclass
-class AnomalousMetric:
+class AnomalousScore:
+    """Holds an anomalous metric score and the reference optimized threshold."""
+
     metric: profiler.Metric
     score: float
     threshold: float
 
 
-def _build_dashboard_link(dataset: str) -> str:
-    return f"PLACEHOLDER/{dataset}"
+def _build_dashboard_link(dataset_uri: str) -> str:
+    return f"PLACEHOLDER/{dataset_uri}"
 
 
 class NotificationHandler(abc.ABC):
+    """Abstract base class for notification handlers.
+
+    Notification handlers implement the warning logic to notify data users about
+    anomalies on new dataset batches.
+
+    """
+
     @abc.abstractmethod
     def _notify(
         self,
-        dataset: str,
+        dataset_uri: str,
         ts: datetime.datetime,
-        anomalous_metrics: List[AnomalousMetric],
+        anomalous_scores: List[AnomalousScore],
         dashboard_link: Optional[str] = None,
     ) -> None:
         """Child class must implement warn logic."""
 
     def notify(
         self,
-        dataset: str,
+        dataset_uri: str,
         ts: datetime.datetime,
-        anomalous_metrics: List[AnomalousMetric],
+        anomalous_scores: List[AnomalousScore],
     ) -> None:
+        """Trigger a notification for a collection of anomalous scores.
+
+        Args:
+            dataset_uri: dataset URI.
+            ts: timestamp reference for the scoring.
+            anomalous_scores: collection of metrics with anomalous scores.
+
+        """
         self._notify(
-            dataset=dataset,
+            dataset_uri=dataset_uri,
             ts=ts,
-            anomalous_metrics=anomalous_metrics,
-            dashboard_link=_build_dashboard_link(dataset=dataset),
+            anomalous_scores=anomalous_scores,
+            dashboard_link=_build_dashboard_link(dataset_uri=dataset_uri),
         )
 
 
 class LogHandler(NotificationHandler):
+    """Sim notification handler that outputs the anomalous scores as a log error."""
+
     def _notify(
         self,
-        dataset: str,
+        dataset_uri: str,
         ts: datetime.datetime,
-        anomalous_metrics: List[AnomalousMetric],
+        anomalous_scores: List[AnomalousScore],
         dashboard_link: Optional[str] = None,
     ) -> None:
         logger.error(
-            f"Anomaly detected for ts={ts} on dataset={dataset}!\n"
+            f"Anomaly detected for ts={ts} on dataset_uri={dataset_uri}!\n"
             f"The following metrics have scores above the defined threshold by the "
-            f"optimization: {anomalous_metrics}. \n"
+            f"optimization: {anomalous_scores}. \n"
             f"Please check the dataset dashboard for more information: "
             f"{dashboard_link}"
         )
@@ -66,9 +85,10 @@ def assess_quality(
     anomaly_scoring: anomaly.AnomalyScoring,
     notification_handlers: Optional[Sequence[NotificationHandler]] = None,
 ) -> bool:
+    """Perform the quality assessment for a target dataset scoring timestamp."""
     logger.info(f"🔍️ Assessing quality for ts={anomaly_scoring.ts} ...")
     metrics = [
-        AnomalousMetric(
+        AnomalousScore(
             metric=score.metric,
             score=score.value,
             threshold=anomaly_optimization.get_metric_optimization(
@@ -77,16 +97,14 @@ def assess_quality(
         )
         for score in anomaly_scoring.scores
     ]
-    anomalous_metrics = [
-        metric for metric in metrics if metric.score > metric.threshold
-    ]
-    if anomalous_metrics:
+    anomalous_scores = [metric for metric in metrics if metric.score > metric.threshold]
+    if anomalous_scores:
         logger.error("Anomaly detected, notifying handlers...")
         for handler in notification_handlers or [LogHandler()]:
             handler.notify(
-                dataset=anomaly_optimization.dataset,
+                dataset_uri=anomaly_optimization.dataset_uri,
                 ts=anomaly_scoring.ts,
-                anomalous_metrics=anomalous_metrics,
+                anomalous_scores=anomalous_scores,
             )
         logger.info("🔍️ Quality assessment finished, handlers notified!")
         return False

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from thoth.anomaly.base import Point
+from thoth.anomaly.base import _Point
 from thoth.anomaly.models import (
     AutoProphetModel,
     AutoSarimaModel,
@@ -30,7 +30,7 @@ class TestModel:
     def test_forecast(self):
         # arrange
         class ProblematicModel(Model):
-            def _train(self, points: List[Point]) -> None:
+            def _train(self, points: List[_Point]) -> None:
                 pass
 
             def _reset(self) -> None:
@@ -104,20 +104,20 @@ class TestSimpleModel:
 
         # act
         predicted, score = model.score(
-            points=[Point(**record) for record in simple_json_data]
+            points=[_Point(**record) for record in simple_json_data]
         )
 
         # assert
         assert predicted == 4.0
         assert score == 0.2
-        assert model.best_window == 1
+        assert model._best_window == 1
 
     def test__check_series_length(self):
         # arrange
         input_points = [
-            Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 2), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 3), value=15.0),
+            _Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
+            _Point(ts=datetime.datetime(2022, 1, 2), value=15.0),
+            _Point(ts=datetime.datetime(2022, 1, 3), value=15.0),
         ]
         model = SimpleModel(windows=[1, 3])
 
@@ -125,14 +125,14 @@ class TestSimpleModel:
         _ = model._check_series_length(train_points=input_points)
 
         # assert
-        assert model.skip_windows == [3]
+        assert model._skip_windows == [3]
 
     def test__check_series_length_exception(self):
         # arrange
         input_points = [
-            Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 2), value=15.0),
-            Point(ts=datetime.datetime(2022, 1, 3), value=15.0),
+            _Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
+            _Point(ts=datetime.datetime(2022, 1, 2), value=15.0),
+            _Point(ts=datetime.datetime(2022, 1, 3), value=15.0),
         ]
         model = SimpleModel(windows=[3])
 
@@ -157,7 +157,7 @@ class TestAutoSarimaModel:
         # act
         _, score = model.score(
             points=[
-                Point(
+                _Point(
                     ts=datetime.datetime.fromisoformat(record["ts"]),
                     value=record["value"],
                 )
@@ -177,7 +177,7 @@ class TestAutoProphetModel:
         # act
         _, score = model.score(
             points=[
-                Point(
+                _Point(
                     ts=datetime.datetime.fromisoformat(record["ts"]),
                     value=record["value"],
                 )

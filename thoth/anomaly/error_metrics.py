@@ -2,6 +2,7 @@ import numpy as np
 
 
 def ape(true_value: float, predicted_value: float) -> float:
+    """Calculate the Absolute percentage error."""
     if true_value < 10**-4:
         raise ValueError(
             f"Trying to calculate APE for a true_value too close to zero which is "

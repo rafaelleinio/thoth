@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from thoth.anomaly.base import TimeSeries
+from thoth.anomaly.base import _TimeSeries
 from thoth.anomaly.optimization import AnomalyOptimization, ValidationTimeSeries
 from thoth.profiler import Metric
 
@@ -26,7 +26,7 @@ def _plot_line_plot(
     ax.tick_params(rotation=45)
 
 
-def plot_time_series(time_series: TimeSeries, zoom_n: int = 15) -> None:
+def plot_time_series(time_series: _TimeSeries, zoom_n: int = 15) -> None:
     fig, axs = plt.subplots(nrows=2, figsize=(12, 8))
     fig.tight_layout(h_pad=10)
     base_kwargs = dict(x="ts", y="value")

@@ -13,7 +13,7 @@ def test_optimize(base_profiling_history):
     # arrange
     confidence = 0.95
     target = AnomalyOptimization(
-        dataset="my_dataset",
+        dataset_uri="my_dataset",
         confidence=confidence,
         metric_optimizations=[
             MetricOptimization(

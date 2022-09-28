@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import Column as SqlAlchemyColumn
 from sqlmodel import Field, SQLModel
 
-from thoth.anomaly.base import Point, TimeSeries, convert_to_timeseries
+from thoth.anomaly.base import _convert_to_timeseries, _Point, _TimeSeries
 from thoth.anomaly.models import (
     BaseModelFactory,
     DefaultModelFactory,
@@ -22,10 +22,14 @@ from thoth.util.custom_typing import pydantic_column_type
 
 
 class OptimizationFailedError(Exception):
+    """Exception defining a base error for the optimization flow."""
+
     pass
 
 
 class ValidationPoint(BaseModel):
+    """Model defining the target ts and the validation error."""
+
     ts: datetime.datetime
     true_value: float
     predicted: Optional[float] = None
@@ -33,6 +37,8 @@ class ValidationPoint(BaseModel):
 
 
 class ValidationTimeSeries(BaseModel):
+    """Model defining the full validation results for a given series and model."""
+
     model_name: str
     points: List[ValidationPoint]
     mean_error: float
@@ -44,6 +50,16 @@ class ValidationTimeSeries(BaseModel):
 
 
 class MetricOptimization(BaseModel):
+    """Holds the optimization results for a specific metric.
+
+    Attributes:
+        metric: metric identification.
+        best_model_name: name of the best performant model for this metric.
+        threshold: anomaly threshold automatically found in the optimization flow.
+        validation_results: all models validation results for the metrics series.
+
+    """
+
     metric: Metric
     best_model_name: str
     threshold: float
@@ -52,13 +68,22 @@ class MetricOptimization(BaseModel):
 
 
 class AnomalyOptimization(SQLModel, table=True):
-    dataset: str = Field(primary_key=True)
+    """Optimization results for a given dataset.
+
+    Attributes:
+        dataset_uri: dataset URI.
+        confidence: target confidence for the optimization.
+
+    """
+
+    dataset_uri: str = Field(primary_key=True)
     confidence: float
     metric_optimizations: List[MetricOptimization] = Field(
         sa_column=SqlAlchemyColumn(pydantic_column_type(List[MetricOptimization]))
     )
 
     def get_metric_optimization(self, metric: Metric) -> MetricOptimization:
+        """Get one specific metric optimization from the metric_optimizations att."""
         return [
             metric_config
             for metric_config in self.metric_optimizations
@@ -66,6 +91,7 @@ class AnomalyOptimization(SQLModel, table=True):
         ].pop(0)
 
     def get_metrics(self) -> Set[Metric]:
+        """Get all metric identifications from the metric_optimizations att."""
         return set(
             profiling_value.metric for profiling_value in self.metric_optimizations
         )
@@ -110,7 +136,7 @@ def _find_best_threshold(
 
 
 def _validate_last_ts(
-    points: List[Point], model: Model, start_ts: datetime.datetime
+    points: List[_Point], model: Model, start_ts: datetime.datetime
 ) -> ValidationPoint:
     """Validate last ts point using all other points as train data.
 
@@ -131,7 +157,7 @@ def _validate_last_ts(
 
 
 def _forward_chaining_cross_validation(
-    points: List[Point], model: Model, start_proportion: float, confidence: float
+    points: List[_Point], model: Model, start_proportion: float, confidence: float
 ) -> ValidationTimeSeries:
     logger.debug(f"Cross validation for model {type(model).__name__} started ...")
     start_ts = points[int(start_proportion * len(points))].ts
@@ -185,12 +211,12 @@ def _select_best_model(
     )
 
 
-def _is_time_series_constant(ts: TimeSeries) -> bool:
+def _is_time_series_constant(ts: _TimeSeries) -> bool:
     return True if len({p.value for p in ts.points}) == 1 else False
 
 
 def _optimize_time_series(
-    ts: TimeSeries,
+    ts: _TimeSeries,
     confidence: float,
     model_factory: BaseModelFactory,
     start_proportion: float,
@@ -228,10 +254,11 @@ def optimize(
     confidence: Optional[float] = None,
     model_factory: Optional[BaseModelFactory] = None,
 ) -> AnomalyOptimization:
+    """Optimize the anomaly strategy for a given dataset using its profiling history."""
     logger.info("📈️ Optimization started ...")
     confidence = confidence or 0.95
     last_profiling_report = profiling_history[-1]
-    time_series = convert_to_timeseries(profiling_history)
+    time_series = _convert_to_timeseries(profiling_history)
     metric_anomaly_optimization_report = [
         _optimize_time_series(
             ts=ts,
@@ -243,7 +270,7 @@ def optimize(
     ]
     logger.info("📈 Optimization finished !")
     return AnomalyOptimization(
-        dataset=last_profiling_report.dataset,
+        dataset_uri=last_profiling_report.dataset_uri,
         confidence=confidence,
         metric_optimizations=metric_anomaly_optimization_report,
     )

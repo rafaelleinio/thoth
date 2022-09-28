@@ -8,8 +8,10 @@ from thoth import repository, service_layer
 from thoth.anomaly import AnomalyScoring, Score
 from thoth.anomaly.models import SimpleModelFactory
 from thoth.anomaly.optimization import AnomalyOptimization, MetricOptimization
-from thoth.profiler import Metric, ProfilingBuilder
+from thoth.dataset import Dataset
+from thoth.profiler import Metric, ProfilingBuilder, Granularity
 from thoth.quality import LogHandler
+from thoth.service_layer import ThothServiceError
 
 
 def test__build_repo_error():
@@ -34,7 +36,7 @@ def test_assess_quality():
     dataset = "my-dataset"
     metric = Metric(entity="Column", instance="f1", name="Mean")
     optimization = AnomalyOptimization(
-        dataset=dataset,
+        dataset_uri=dataset,
         confidence=0.95,
         metric_optimizations=[
             MetricOptimization(
@@ -46,7 +48,7 @@ def test_assess_quality():
         ],
     )
     scoring = AnomalyScoring(
-        dataset=dataset,
+        dataset_uri=dataset,
         ts=ts,
         scores=[Score(metric=metric, value=0.19, predicted=123)],
     )
@@ -58,10 +60,10 @@ def test_assess_quality():
 
         repo.add_optimization(optimization=optimization)
         repo.add_scoring(scoring=scoring)
-        [output_scoring] = repo.select_scoring(dataset="my-dataset")
+        [output_scoring] = repo.select_scoring(dataset_uri="my-dataset")
 
         success = service_layer.assess_quality(
-            dataset=dataset,
+            dataset_uri=dataset,
             ts=ts,
             session=session,
         )
@@ -72,7 +74,6 @@ def test_assess_quality():
 
 
 def test_e2e_flow_with_anomaly(json_data, spark_session, caplog):
-    """ """
     # arrange
     caplog.set_level("INFO")
 
@@ -98,9 +99,9 @@ def test_e2e_flow_with_anomaly(json_data, spark_session, caplog):
     # act
     with Session(engine) as session:
         service_layer.init_db(engine=engine)
-        _, _ = service_layer.profile_optimize(
+        _, _ = service_layer.profile_create_optimize(
             df=normal_history_df,
-            dataset="temperatures",
+            dataset_uri="temperatures",
             ts_column="ts",
             profiling_builder=ProfilingBuilder(analyzers=[Mean(column="value")]),
             model_factory=model_factory,
@@ -110,8 +111,7 @@ def test_e2e_flow_with_anomaly(json_data, spark_session, caplog):
         result = service_layer.assess_new_ts(
             df=new_anomalous_point_df,
             ts=datetime.datetime(year=1981, month=12, day=31),
-            dataset="temperatures",
-            ts_column="ts",
+            dataset_uri="temperatures",
             profiling_builder=ProfilingBuilder(analyzers=[Mean(column="value")]),
             model_factory=model_factory,
             session=session,
@@ -130,7 +130,7 @@ def test_score_exception():
         service_layer.init_db(engine=engine)
         with pytest.raises(ValueError):
             service_layer.score(
-                dataset="my-dataset", ts=datetime.datetime.utcnow(), session=session
+                dataset_uri="my-dataset", ts=datetime.datetime.utcnow(), session=session
             )
 
 
@@ -140,7 +140,7 @@ def test_assess_quality_exception():
         service_layer.init_db(engine=engine)
         with pytest.raises(ValueError):
             service_layer.assess_quality(
-                dataset="my-dataset", ts=datetime.datetime.utcnow(), session=session
+                dataset_uri="my-dataset", ts=datetime.datetime.utcnow(), session=session
             )
 
 
@@ -152,7 +152,30 @@ def test_assess_new_ts_exception():
             service_layer.assess_new_ts(
                 df=None,
                 ts=datetime.datetime.utcnow(),
-                dataset="my-dataset",
-                ts_column="ts_column",
+                dataset_uri="my-dataset",
                 session=session,
             )
+
+
+def test_profile_exception(session):
+    # act and assert
+    with pytest.raises(ThothServiceError):
+        service_layer.profile(df=None, dataset_uri="not-found", session=session)
+
+
+def test_get_datasets(session):
+    # arrange
+    dataset = Dataset(
+        uri="my-dataset",
+        ts_column="ts",
+        columns=["f1"],
+        granularity=Granularity.DAY,
+        metrics=[Metric(entity="Column", instance="f1", name="Mean")],
+    )
+    service_layer.add_dataset(dataset=dataset, session=session)
+
+    # act
+    output = service_layer.get_datasets(session=session)
+
+    # assert
+    assert output == [dataset]
