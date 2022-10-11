@@ -1,7 +1,7 @@
 import datetime
 
-import thoth.anomaly.base
 import thoth.anomaly.optimization
+import thoth.base
 from thoth import anomaly, profiler
 
 
@@ -20,11 +20,11 @@ class TestAnomalyScoring:
             ],
         )
 
-        anomaly_config = thoth.anomaly.optimization.AnomalyOptimization(
+        anomaly_config = thoth.anomaly.AnomalyOptimization(
             dataset_uri="my_dataset",
             confidence=0.95,
             metric_optimizations=[
-                thoth.anomaly.optimization.MetricOptimization(
+                thoth.anomaly.MetricOptimization(
                     metric=base_profiling_history[0].profiling_values[0].metric,
                     best_model_name="SimpleModel",
                     threshold=0.2,
@@ -45,20 +45,20 @@ class TestAnomalyScoring:
     def test__convert_to_timeseries(self, base_profiling_history, json_data):
         # arrange
         points = [
-            anomaly.base._Point(
+            thoth.base.Point(
                 ts=datetime.datetime.fromisoformat(record["ts"]), value=record["value"]
             )
             for record in json_data
         ]
         target_output_time_series = [
-            thoth.anomaly.base._TimeSeries(
+            thoth.base.TimeSeries(
                 metric=base_profiling_history[0].profiling_values[0].metric,
                 points=points,
             )
         ]
 
         # act
-        output_time_series = thoth.anomaly.base._convert_to_timeseries(
+        output_time_series = thoth.base.convert_to_timeseries(
             profiling=base_profiling_history,
         )
 

@@ -14,8 +14,8 @@ from thoth.profiler import Granularity, Metric, ProfilingReport, ProfilingValue
 @pytest.fixture
 def json_data() -> List[Dict[str, Any]]:
     with open(
-            f"{pathlib.Path(__file__).parent.parent.resolve()}/sample_datasets/"
-            f"temperatures.json"
+        f"{pathlib.Path(__file__).parent.parent.resolve()}/sample_datasets/"
+        f"temperatures.json"
     ) as f:
         return json.load(f)
 

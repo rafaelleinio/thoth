@@ -8,31 +8,36 @@ from thoth.profiler import Metric, ProfilingReport
 
 
 @dataclass
-class _Point:
+class Point:
+    """Point object which holds a value and a timestamp reference."""
+
     ts: datetime.datetime
     value: float
 
 
 @dataclass
-class _TimeSeries:
-    metric: Metric
-    points: List[_Point]
+class TimeSeries:
+    """Series of points for a specific metric."""
 
-    def __lt__(self, other: _TimeSeries) -> bool:
+    metric: Metric
+    points: List[Point]
+
+    def __lt__(self, other: TimeSeries) -> bool:
         return self.metric < other.metric
 
 
-def _convert_to_timeseries(profiling: List[ProfilingReport]) -> List[_TimeSeries]:
+def convert_to_timeseries(profiling: List[ProfilingReport]) -> List[TimeSeries]:
+    """Transform a list of profiling reports to a list of profiling metric ts."""
     last_report = profiling[-1]
     metrics = [
         profiling_value.metric for profiling_value in last_report.profiling_values
     ]
     return sorted(
         [
-            _TimeSeries(
+            TimeSeries(
                 metric=metric,
                 points=[
-                    _Point(ts=report.ts, value=report.get_profiling_value(metric).value)
+                    Point(ts=report.ts, value=report.get_profiling_value(metric).value)
                     for report in profiling
                 ],
             )

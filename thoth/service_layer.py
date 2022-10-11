@@ -73,6 +73,76 @@ def get_datasets(
     return repo.get_datasets()
 
 
+def get_dataset(
+    dataset_uri: str,
+    repo: Optional[repository.AbstractRepository] = None,
+    session: Optional[Session] = None,
+) -> Optional[Dataset]:
+    """Get a specific dataset given the uri.
+
+    Args:
+        dataset_uri: dataset URI.
+        repo: repository to save the resulting profiling metrics.
+        session: sql session to be used by the repository.
+
+    """
+    repo = _build_repo(repo=repo, session=session)
+    return repo.get_dataset(dataset_uri=dataset_uri)
+
+
+def select_profiling(
+    dataset_uri: str,
+    start_ts: Optional[datetime.datetime] = None,
+    repo: Optional[repository.AbstractRepository] = None,
+    session: Optional[Session] = None,
+) -> List[profiler.ProfilingReport]:
+    """Get the profiling history for a specific dataset.
+
+    Args:
+        dataset_uri: dataset URI.
+        start_ts: minimum timestamp to filter (closed interval).
+        repo: repository to save the resulting profiling metrics.
+        session: sql session to be used by the repository.
+
+    """
+    repo = _build_repo(repo=repo, session=session)
+    return repo.select_profiling(dataset_uri=dataset_uri, start_ts=start_ts)
+
+
+def get_optimization(
+    dataset_uri: str,
+    repo: Optional[repository.AbstractRepository] = None,
+    session: Optional[Session] = None,
+) -> Optional[anomaly.AnomalyOptimization]:
+    """Get the optimization for a specific dataset.
+
+    Args:
+        dataset_uri: dataset URI.
+        repo: repository to save the resulting profiling metrics.
+        session: sql session to be used by the repository.
+
+    """
+    repo = _build_repo(repo=repo, session=session)
+    return repo.get_optimization(dataset_uri=dataset_uri)
+
+
+def get_scoring(
+    dataset_uri: str,
+    repo: Optional[repository.AbstractRepository] = None,
+    session: Optional[Session] = None,
+) -> List[anomaly.AnomalyScoring]:
+    """Get the optimization for a specific dataset.
+
+    Args:
+        dataset_uri: dataset URI.
+        repo: repository to save the resulting profiling metrics.
+        session: sql session to be used by the repository.
+
+    """
+    repo = _build_repo(repo=repo, session=session)
+    return repo.select_scoring(dataset_uri=dataset_uri)
+
+
 def profile(
     df: DataFrame,
     dataset_uri: str,
@@ -101,7 +171,9 @@ def profile(
 
     dataset = repo.get_dataset(dataset_uri=dataset_uri)
     if not dataset:
-        raise ThothServiceError(f"No dataset was found for the givin uri={dataset_uri}")
+        raise ThothServiceError(
+            f"No dataset was found for the giving uri={dataset_uri}"
+        )
     ts_column = dataset.ts_column
     granularity = dataset.granularity
 
@@ -161,10 +233,10 @@ def optimize(
     last_n: Optional[int] = None,
     start_proportion: Optional[float] = None,
     target_confidence: Optional[float] = None,
-    model_factory: Optional[anomaly.optimization.BaseModelFactory] = None,
+    model_factory: Optional[anomaly.BaseModelFactory] = None,
     repo: Optional[repository.AbstractRepository] = None,
     session: Optional[Session] = None,
-) -> anomaly.optimization.AnomalyOptimization:
+) -> anomaly.AnomalyOptimization:
     """Optimize the anomaly strategy for a given dataset using its profiling history.
 
     Args:
@@ -192,7 +264,7 @@ def optimize(
     """
     repo = _build_repo(repo=repo, session=session)
     profiling = profiling or repo.select_profiling(dataset_uri=dataset_uri)
-    optimization = anomaly.optimization.optimize(
+    optimization = anomaly.optimize(
         profiling_history=profiling[-last_n:] if last_n else profiling,
         start_proportion=start_proportion,
         confidence=target_confidence,
@@ -205,9 +277,9 @@ def optimize(
 def score(
     dataset_uri: str,
     ts: datetime.datetime,
-    optimization: Optional[anomaly.optimization.AnomalyOptimization] = None,
+    optimization: Optional[anomaly.AnomalyOptimization] = None,
     profiling_history: Optional[List[profiler.ProfilingReport]] = None,
-    model_factory: Optional[anomaly.optimization.BaseModelFactory] = None,
+    model_factory: Optional[anomaly.BaseModelFactory] = None,
     repo: Optional[repository.AbstractRepository] = None,
     session: Optional[Session] = None,
 ) -> anomaly.AnomalyScoring:
@@ -253,7 +325,7 @@ def score(
 def assess_quality(
     dataset_uri: str,
     ts: datetime.datetime,
-    optimization: Optional[anomaly.optimization.AnomalyOptimization] = None,
+    optimization: Optional[anomaly.AnomalyOptimization] = None,
     scoring: Optional[anomaly.AnomalyScoring] = None,
     notification_handlers: Optional[List[quality.NotificationHandler]] = None,
     repo: Optional[repository.AbstractRepository] = None,
@@ -299,15 +371,16 @@ def profile_create_optimize(
     df: DataFrame,
     dataset_uri: str,
     ts_column: str,
-    profiling_builder: Optional[profiler.ProfilingBuilder] = None,
     granularity: str = Granularity.DAY,
-    start_proportion: Optional[float] = None,
-    target_confidence: Optional[float] = None,
-    model_factory: Optional[anomaly.optimization.BaseModelFactory] = None,
+    profiling_builder: Optional[profiler.ProfilingBuilder] = None,
+    optimize_last_n: Optional[int] = None,
+    optimize_start_proportion: Optional[float] = None,
+    optimize_target_confidence: Optional[float] = None,
+    model_factory: Optional[anomaly.BaseModelFactory] = None,
     repo: Optional[repository.AbstractRepository] = None,
     session: Optional[Session] = None,
     spark: Optional[SparkSession] = None,
-) -> Tuple[List[profiler.ProfilingReport], anomaly.optimization.AnomalyOptimization]:
+) -> Tuple[List[profiler.ProfilingReport], anomaly.AnomalyOptimization]:
     """Run a profiling pipeline, creation of the dataset and the optimization together.
 
     This service is very useful to onboard a brand-new dataset to the metrics
@@ -330,8 +403,9 @@ def profile_create_optimize(
     optimization = optimize(
         dataset_uri=dataset_uri,
         profiling=profiling,
-        start_proportion=start_proportion,
-        target_confidence=target_confidence,
+        last_n=optimize_last_n,
+        start_proportion=optimize_start_proportion,
+        target_confidence=optimize_target_confidence,
         model_factory=model_factory,
         repo=repo,
         session=session,
@@ -345,7 +419,7 @@ def assess_new_ts(
     ts: datetime.datetime,
     dataset_uri: str,
     profiling_builder: Optional[profiler.ProfilingBuilder] = None,
-    model_factory: Optional[anomaly.optimization.BaseModelFactory] = None,
+    model_factory: Optional[anomaly.BaseModelFactory] = None,
     notification_handlers: Optional[List[quality.NotificationHandler]] = None,
     repo: Optional[repository.AbstractRepository] = None,
     session: Optional[Session] = None,
@@ -357,6 +431,7 @@ def assess_new_ts(
 
     """
     logger.info("Pipeline started 👤 💯 🔍️ ...")
+    logger.info(ts)
     repo = _build_repo(repo=repo, session=session)
     profiling_history = repo.select_profiling(dataset_uri=dataset_uri, end_ts=ts)
     optimization = repo.get_optimization(dataset_uri=dataset_uri)

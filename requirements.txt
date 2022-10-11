@@ -22,6 +22,5 @@ pg8000
 
 # dashboard
 streamlit
+streamlit-permalink
 plotly
-matplotlib
-seaborn

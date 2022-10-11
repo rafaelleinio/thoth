@@ -9,7 +9,7 @@ from thoth.anomaly import AnomalyScoring, Score
 from thoth.anomaly.models import SimpleModelFactory
 from thoth.anomaly.optimization import AnomalyOptimization, MetricOptimization
 from thoth.dataset import Dataset
-from thoth.profiler import Metric, ProfilingBuilder, Granularity
+from thoth.profiler import Granularity, Metric, ProfilingBuilder
 from thoth.quality import LogHandler
 from thoth.service_layer import ThothServiceError
 

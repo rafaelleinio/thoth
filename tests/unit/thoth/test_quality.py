@@ -22,11 +22,11 @@ def test_assess_quality_error():
     # arrange
     notification_handler = MockNotificationHandler()
     metric = profiler.Metric(entity="Column", instance="f1", name="Mean")
-    anomaly_optimization = anomaly.optimization.AnomalyOptimization(
+    anomaly_optimization = anomaly.AnomalyOptimization(
         dataset_uri="my-dataset",
         confidence=0.95,
         metric_optimizations=[
-            anomaly.optimization.MetricOptimization(
+            anomaly.MetricOptimization(
                 metric=metric,
                 best_model_name="best-model",
                 threshold=0.15,
@@ -61,11 +61,11 @@ def test_assess_quality_error():
 def test_assess_quality_success():
     # arrange
     metric = profiler.Metric(entity="Column", instance="f1", name="Mean")
-    anomaly_optimization = anomaly.optimization.AnomalyOptimization(
+    anomaly_optimization = anomaly.AnomalyOptimization(
         dataset_uri="my-dataset",
         confidence=0.95,
         metric_optimizations=[
-            anomaly.optimization.MetricOptimization(
+            anomaly.MetricOptimization(
                 metric=metric,
                 best_model_name="best-model",
                 threshold=0.15,

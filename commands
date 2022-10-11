@@ -1,6 +1,0 @@
-apt-get update
-apt-get install -y openssh-server
-service ssh start
-
-
-docker inspect -f "{{ .NetworkSettings.IPAddress }}" <container>

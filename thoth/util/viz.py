@@ -1,130 +1,148 @@
-import datetime
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import List
 
 import pandas as pd
-import seaborn as sns
-from matplotlib import pyplot as plt
+import plotly.express as px
+import plotly.graph_objs as go
+from plotly.graph_objs import Figure
 
-from thoth.anomaly.base import _TimeSeries
-from thoth.anomaly.optimization import AnomalyOptimization, ValidationTimeSeries
+from thoth.anomaly.optimization import AnomalyOptimization, MetricOptimization
+from thoth.base import Point, TimeSeries
 from thoth.profiler import Metric
 
 
-def _plot_line_plot(
-    x: str,
-    y: str,
-    data: pd.DataFrame,
-    title: str,
-    ax: Any,
-    hue: Optional[str] = None,
-    style: Optional[str] = None,
-) -> None:
-    sns.lineplot(x=x, y=y, data=data, ax=ax, hue=hue, style=style)
-    ax.legend(loc="upper left", bbox_to_anchor=(1, 0.5))
-    ax.set(title=title)
-    ax.tick_params(rotation=45)
-
-
-def plot_time_series(time_series: _TimeSeries, zoom_n: int = 15) -> None:
-    fig, axs = plt.subplots(nrows=2, figsize=(12, 8))
-    fig.tight_layout(h_pad=10)
-    base_kwargs = dict(x="ts", y="value")
-    _plot_line_plot(
-        **base_kwargs,
-        data=pd.DataFrame(time_series.points),
-        title=str(time_series.metric),
-        ax=axs[0],
+def plot_ts(ts: TimeSeries) -> Figure:
+    return px.line(
+        data_frame=pd.DataFrame(ts.points), x="ts", y="value", title=ts.metric.name
     )
-    _plot_line_plot(
-        **base_kwargs,
-        data=pd.DataFrame(time_series.points[-zoom_n:]),
-        title=f"Zoom last {zoom_n} points",
-        ax=axs[1],
-    )
-    plt.show()
 
 
-def plot_validation_time_series(
-    validation_time_series: List[ValidationTimeSeries], metric: Metric, zoom_n: int = 15
-) -> None:
-    @dataclass
-    class PlotData:
-        ts: datetime.datetime
-        value: float
-        color: str
-        style: Optional[str] = None
-        error: Optional[float] = None
-
+def plot_validation_results(metric_optimization: MetricOptimization) -> Figure:
     true_values = [
-        PlotData(point.ts, point.true_value, color="True", style="True")
-        for point in validation_time_series[0].points
+        {
+            "ts": point.ts,
+            "value": round(point.true_value, 2),
+            "label": "True Value",
+        }
+        for point in metric_optimization.validation_results[0].points
     ]
-    last_n_ts: List[datetime.datetime] = [p.ts for p in true_values[-zoom_n:]]
-    predicted_values = [
-        PlotData(
-            point.ts,
-            point.predicted,
-            color=ts.model_name + " (Model)",
-            style="Model",
-            error=point.error,
-        )
-        for ts in validation_time_series
-        for point in ts.points
-        if point.predicted
+    model_values = [
+        {
+            "ts": point.ts,
+            "value": round(point.predicted, 2) if point.predicted else None,
+            "label": validation_ts.model_name,
+        }
+        for validation_ts in metric_optimization.validation_results
+        for point in validation_ts.points
     ]
-    values = true_values + predicted_values
-    values_last_n = [p for p in values if p.ts in last_n_ts]
+    df = pd.DataFrame(true_values + model_values)
+    return px.line(
+        data_frame=df, x="ts", y="value", color="label", title="Validation Values"
+    )
 
-    fig, axs = plt.subplots(nrows=3, figsize=(12, 16))
-    fig.tight_layout(h_pad=10)
-    base_kwargs = dict(x="ts", y="value", hue="color", style="style")
-    _plot_line_plot(
-        **base_kwargs,
-        title=str(metric),
-        data=pd.DataFrame(data=values),
-        ax=axs[0],
+
+def plot_validation_errors(metric_optimization: MetricOptimization) -> Figure:
+    error_values = [
+        {
+            "ts": point.ts,
+            "error": point.error,
+            "label": validation_ts.model_name,
+        }
+        for validation_ts in metric_optimization.validation_results
+        for point in validation_ts.points
+    ]
+    df = pd.DataFrame(error_values)
+    return px.line(
+        data_frame=df, x="ts", y="error", color="label", title="Validation Errors"
     )
-    _plot_line_plot(
-        **base_kwargs,
-        title=f"Zoom last {zoom_n} points",
-        data=pd.DataFrame(data=values_last_n),
-        ax=axs[1],
-    )
-    _plot_line_plot(
+
+
+def plot_metric_scoring(
+    metric: Metric, threshold: float, scoring_points: List[Point]
+) -> Figure:
+    fig = px.line(
+        data_frame=pd.DataFrame(scoring_points),
         x="ts",
-        y="error",
-        hue="color",
-        title="Model Errors",
-        data=pd.DataFrame(data=predicted_values),
-        ax=axs[2],
+        y="value",
+        title=f"Anomaly Scoring for {metric.name}",
     )
-    plt.show()
-
-
-def tabulate_optimization_report_best_model(
-    report: AnomalyOptimization,
-) -> pd.DataFrame:
-    @dataclass
-    class Table:
-        metric: str
-        best_model: str
-        threshold: float
-
-    return pd.DataFrame(
-        data=[
-            Table(
-                str(metric_report.metric),
-                metric_report.best_model_name,
-                metric_report.threshold,
-            )
-            for metric_report in report.metric_optimizations
-        ]
+    fig.add_hline(
+        y=threshold,
+        line_width=1,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="threshold",
+        annotation_position="top right",
+        annotation_font={"color": "red"},
     )
+    fig.add_hrect(
+        y0=threshold,
+        y1=1.0,
+        annotation_text="anomaly zone",
+        annotation_position="top right",
+        annotation_font={"color": "red"},
+        fillcolor="red",
+        opacity=0.25,
+        line_width=0,
+    )
+    return fig
 
 
-def tabulate_optimization_report_scores(
-    report: AnomalyOptimization,
+def plot_predicted_values(
+    metric: Metric,
+    threshold: float,
+    predicted_points: List[Point],
+    observed_points: List[Point],
+) -> Figure:
+    x_predicted = [point.ts for point in predicted_points]
+    min_ts = x_predicted[0]
+    y_predicted = [point.value for point in predicted_points]
+    y_predicted_upper = [y * (1 + threshold) for y in y_predicted]
+    y_predicted_lower = [y * (1 - threshold) for y in y_predicted]
+    x_observed = [point.ts for point in observed_points if point.ts >= min_ts]
+    y_observed = [point.value for point in observed_points if point.ts >= min_ts]
+
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=x_predicted,
+                y=y_predicted,
+                name="predicted",
+                # line=dict(color='rgb(0,100,80)'),
+                mode="lines",
+                line=dict(color="rgba(39, 174, 96,1.0)"),
+            ),
+            go.Scatter(
+                x=x_predicted + x_predicted[::-1],  # x, then x reversed
+                y=y_predicted_upper
+                + y_predicted_lower[::-1],  # upper, then lower reversed
+                fill="toself",
+                # fillcolor='rgba(0,100,80,0.2)',
+                # line=dict(color='rgba(255,255,255,0)'),
+                hoverinfo="skip",
+                name="expected interval",
+                fillcolor="green",
+                mode="lines",
+                line=dict(width=0),
+                opacity=0.25,
+                # showlegend=False
+            ),
+            go.Scatter(
+                x=x_observed,
+                y=y_observed,
+                name="observed",
+                # line=dict(color='rgb(0,100,80)'),
+                mode="lines",
+                line=dict(color="rgba(211, 84, 0,1.0)"),
+            ),
+        ],
+    )
+    fig.update_layout(title=f"Expected vs Observed for {metric.name}")
+    return fig
+
+
+def create_anomaly_optimization_table(
+    optimization: AnomalyOptimization,
 ) -> pd.DataFrame:
     @dataclass
     class Table:
@@ -143,7 +161,25 @@ def tabulate_optimization_report_scores(
                 validation_time_series.threshold,
                 validation_time_series.below_threshold_proportion,
             )
-            for metric_report in report.metric_optimizations
+            for metric_report in optimization.metric_optimizations
             for validation_time_series in metric_report.validation_results
+        ]
+    )
+
+
+def create_metric_optimization_table(
+    metric_optimization: MetricOptimization,
+) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "model_name": validation_result.model_name,
+                "mean_error": round(validation_result.mean_error, 4),
+                "threshold": round(validation_result.threshold, 2),
+                "below_threshold_percentage": round(
+                    validation_result.below_threshold_proportion, 2
+                ),
+            }
+            for validation_result in metric_optimization.validation_results
         ]
     )

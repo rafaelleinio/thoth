@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import datetime
+import os
 from typing import List, Optional, Sequence
 
 from loguru import logger
@@ -18,7 +19,8 @@ class AnomalousScore:
 
 
 def _build_dashboard_link(dataset_uri: str) -> str:
-    return f"PLACEHOLDER/{dataset_uri}"
+    dashboard_url = os.environ.get("DASHBOARD_URL", "localhost:8501")
+    return f"{dashboard_url}"
 
 
 class NotificationHandler(abc.ABC):
@@ -81,7 +83,7 @@ class LogHandler(NotificationHandler):
 
 
 def assess_quality(
-    anomaly_optimization: anomaly.optimization.AnomalyOptimization,
+    anomaly_optimization: anomaly.AnomalyOptimization,
     anomaly_scoring: anomaly.AnomalyScoring,
     notification_handlers: Optional[Sequence[NotificationHandler]] = None,
 ) -> bool:
@@ -99,7 +101,7 @@ def assess_quality(
     ]
     anomalous_scores = [metric for metric in metrics if metric.score > metric.threshold]
     if anomalous_scores:
-        logger.error("Anomaly detected, notifying handlers...")
+        logger.error("⚠️Anomaly detected, notifying handlers...")
         for handler in notification_handlers or [LogHandler()]:
             handler.notify(
                 dataset_uri=anomaly_optimization.dataset_uri,

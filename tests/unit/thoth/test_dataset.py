@@ -7,7 +7,7 @@ def test_get_instances():
     dataset = Dataset(
         uri="my-dataset",
         ts_column="ts",
-        columns=["f1"],
+        columns=["f1", "f2"],
         metrics=[
             Metric(entity="Column", instance="f1", name="Mean"),
             Metric(entity="Column", instance="f1", name="Max"),

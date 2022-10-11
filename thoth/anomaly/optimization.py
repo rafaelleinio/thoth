@@ -10,13 +10,13 @@ from pydantic import BaseModel
 from sqlalchemy import Column as SqlAlchemyColumn
 from sqlmodel import Field, SQLModel
 
-from thoth.anomaly.base import _convert_to_timeseries, _Point, _TimeSeries
 from thoth.anomaly.models import (
     BaseModelFactory,
     DefaultModelFactory,
     Model,
     SimpleModelFactory,
 )
+from thoth.base import Point, TimeSeries, convert_to_timeseries
 from thoth.profiler import Metric, ProfilingReport
 from thoth.util.custom_typing import pydantic_column_type
 
@@ -136,7 +136,7 @@ def _find_best_threshold(
 
 
 def _validate_last_ts(
-    points: List[_Point], model: Model, start_ts: datetime.datetime
+    points: List[Point], model: Model, start_ts: datetime.datetime
 ) -> ValidationPoint:
     """Validate last ts point using all other points as train data.
 
@@ -157,7 +157,7 @@ def _validate_last_ts(
 
 
 def _forward_chaining_cross_validation(
-    points: List[_Point], model: Model, start_proportion: float, confidence: float
+    points: List[Point], model: Model, start_proportion: float, confidence: float
 ) -> ValidationTimeSeries:
     logger.debug(f"Cross validation for model {type(model).__name__} started ...")
     start_ts = points[int(start_proportion * len(points))].ts
@@ -211,12 +211,12 @@ def _select_best_model(
     )
 
 
-def _is_time_series_constant(ts: _TimeSeries) -> bool:
+def _is_time_series_constant(ts: TimeSeries) -> bool:
     return True if len({p.value for p in ts.points}) == 1 else False
 
 
 def _optimize_time_series(
-    ts: _TimeSeries,
+    ts: TimeSeries,
     confidence: float,
     model_factory: BaseModelFactory,
     start_proportion: float,
@@ -258,7 +258,7 @@ def optimize(
     logger.info("📈️ Optimization started ...")
     confidence = confidence or 0.95
     last_profiling_report = profiling_history[-1]
-    time_series = _convert_to_timeseries(profiling_history)
+    time_series = convert_to_timeseries(profiling_history)
     metric_anomaly_optimization_report = [
         _optimize_time_series(
             ts=ts,

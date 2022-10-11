@@ -124,6 +124,29 @@ class DefaultProfilingBuilder(ProfilingBuilder):
         )
 
 
+class SimpleProfilingBuilder(ProfilingBuilder):
+    """Simple setup for a profiling builder."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            type_mappings=[
+                Type2Analyzers(
+                    data_type=NumericType,
+                    analyzers=[
+                        Mean,
+                    ],
+                ),
+                Type2Analyzers(
+                    data_type=DataType,
+                    analyzers=[
+                        Completeness,
+                    ],
+                ),
+            ],
+            analyzers=[Size()],
+        )
+
+
 class Metric(BaseModel):
     """Keys that define a profiling metric.
 
@@ -212,7 +235,9 @@ class Granularity:
 
 
 def _transform_day(c: Union[SparkColumn, str]) -> SparkColumn:
-    return F.to_timestamp(F.to_date(c))
+    return F.to_utc_timestamp(
+        F.date_trunc("day", c), datetime.datetime.now().astimezone().tzname() or "utc"
+    )
 
 
 _GranularityTransform = {Granularity.DAY: _transform_day}
@@ -228,12 +253,13 @@ def _build_report(
     profiling_builder: ProfilingBuilder,
     dataset_uri: str,
     single_partition_df: DataFrame,
+    ts_column: str,
     ts: datetime.datetime,
     granularity: str,
     spark: SparkSession,
 ) -> ProfilingReport:
     analyzers = profiling_builder.build_analyzers(
-        structured_fields=single_partition_df.schema.fields
+        structured_fields=single_partition_df.drop(ts_column).schema.fields
     )
     analysis_runner = AnalysisRunner(spark).onData(single_partition_df)
     for analyzer in analyzers:
@@ -290,15 +316,18 @@ def profile(
     logger.info("👤 Profiling started ...")
     spark = spark or SparkSession.builder.getOrCreate()
     granularity = granularity or Granularity.DAY
+    logger.info(df.rdd.map(lambda row: row.asDict()).collect()[0])
     ts_transformed_df = _transform_ts_granularity(
         df=df, ts_column=ts_column, granularity=granularity
     )
+    logger.info(ts_transformed_df.rdd.map(lambda row: row.asDict()).collect()[0])
     ts_values: List[datetime.datetime] = sorted(
         ts_transformed_df.select(ts_column)
         .distinct()
         .rdd.flatMap(lambda x: x)
         .collect()
     )
+    logger.info(ts_values)
     logger.info(
         f"Processing {len(ts_values)} timestamps from {ts_values[0].isoformat()} to "
         f"{ts_values[-1].isoformat()}, with {granularity} granularity."
@@ -310,6 +339,7 @@ def profile(
             single_partition_df=ts_transformed_df.where(
                 F.col(ts_column) == F.lit(ts_value)
             ),
+            ts_column=ts_column,
             ts=ts_value,
             granularity=granularity,
             spark=spark,

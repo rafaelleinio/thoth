@@ -7,9 +7,9 @@ from pydantic import BaseModel
 from sqlalchemy import Column as SqlAlchemyColumn
 from sqlmodel import Field, SQLModel
 
-from thoth.anomaly.base import _convert_to_timeseries, _TimeSeries
 from thoth.anomaly.models import BaseModelFactory, DefaultModelFactory
 from thoth.anomaly.optimization import AnomalyOptimization, MetricOptimization
+from thoth.base import TimeSeries, convert_to_timeseries
 from thoth.profiler import Metric, ProfilingReport
 from thoth.util.custom_typing import pydantic_column_type
 
@@ -45,9 +45,13 @@ class AnomalyScoring(SQLModel, table=True):
         super().__init__(**data)
         self.id_ = self._build_id(self.dataset_uri, self.ts)
 
+    def get_metric_score(self, metric: Metric) -> Score:
+        """Get the score for a given metric."""
+        return [score_ for score_ in self.scores if score_.metric == metric].pop(0)
+
 
 def _score_model(
-    time_series: _TimeSeries,
+    time_series: TimeSeries,
     metric_optimization: MetricOptimization,
     model_factory: BaseModelFactory,
 ) -> Score:
@@ -72,7 +76,7 @@ def score(
     """Calculate the anomaly score for a target dataset timestamp batch."""
     logger.info("💯 Scoring started...")
     last_profiling_report = profiling_history[-1]
-    metrics_ts = _convert_to_timeseries(profiling_history)
+    metrics_ts = convert_to_timeseries(profiling_history)
     scores = [
         _score_model(
             time_series=metric_ts,

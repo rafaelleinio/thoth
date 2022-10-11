@@ -2,7 +2,6 @@ import datetime
 
 import pytest
 
-from thoth.anomaly.base import _Point, _TimeSeries
 from thoth.anomaly.models import AutoSarimaModel, BaseModelFactory
 from thoth.anomaly.optimization import (
     AnomalyOptimization,
@@ -15,6 +14,7 @@ from thoth.anomaly.optimization import (
     _select_best_model,
     _ThresholdProportion,
 )
+from thoth.base import Point, TimeSeries
 from thoth.profiler import Metric
 
 
@@ -178,19 +178,19 @@ def test__select_best_model_exception():
 
 def test__optimize_time_series_constant_flow():
     # arrange
-    input_ts = _TimeSeries(
+    input_ts = TimeSeries(
         metric=Metric(entity="Column", instance="f1", name="Mean"),
         points=[
-            _Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 2), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 3), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 4), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 5), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 6), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 7), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 8), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 9), value=15.0),
-            _Point(ts=datetime.datetime(2022, 1, 10), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 1), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 2), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 3), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 4), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 5), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 6), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 7), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 8), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 9), value=15.0),
+            Point(ts=datetime.datetime(2022, 1, 10), value=15.0),
         ],
     )
 

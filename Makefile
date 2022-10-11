@@ -92,10 +92,15 @@ package:
 version:
 	@echo "$(VERSION)"
 
-.PHONY: build-docker
-## build thoth image, needs AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars
-build-docker:
-	@echo TODO BUILD
+.PHONY: app
+## create db infra with docker compose
+app:
+	@docker compose -f docker-compose.yaml up
+
+.PHONY: teardown
+## teardown all infra on docker compose
+teardown:
+	@docker compose -f docker-compose.yaml down
 
 .PHONY: clean
 ## clean unused artifacts

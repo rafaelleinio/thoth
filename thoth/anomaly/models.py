@@ -10,8 +10,8 @@ from merlion.models.automl.autosarima import AutoSarima, AutoSarimaConfig
 from merlion.utils.time_series import TimeSeries as MerlionTimeSeries
 from merlion.utils.time_series import UnivariateTimeSeries
 
-from thoth.anomaly.base import _Point
 from thoth.anomaly.error_metrics import ape
+from thoth.base import Point
 
 
 class ForecastValueError(Exception):
@@ -22,7 +22,7 @@ class Model(ABC):
     """Base class defining expected interface for forecast models."""
 
     @abstractmethod
-    def _train(self, points: List[_Point]) -> None:
+    def _train(self, points: List[Point]) -> None:
         """Child class must implement this operation."""
 
     @abstractmethod
@@ -37,7 +37,7 @@ class Model(ABC):
         """Reset the state of the model to the original object."""
         return self._reset()
 
-    def train(self, points: List[_Point]) -> None:
+    def train(self, points: List[Point]) -> None:
         """Train the model with the given series."""
         self._train(points)
 
@@ -53,7 +53,7 @@ class Model(ABC):
             )
         return forecasts
 
-    def score(self, points: List[_Point]) -> Tuple[float, float]:
+    def score(self, points: List[Point]) -> Tuple[float, float]:
         """Use a given series to train the model and anomaly score the last point.
 
         Args:
@@ -111,7 +111,7 @@ class SimpleModel(Model):
             )
         return pdf
 
-    def _check_series_length(self, train_points: List[_Point]) -> None:
+    def _check_series_length(self, train_points: List[Point]) -> None:
         train_length = len(train_points)
         sorted_windows = sorted(self.windows)
         shortest_window = sorted_windows[0]
@@ -123,7 +123,7 @@ class SimpleModel(Model):
         self._skip_windows = [w for w in sorted_windows if w >= train_length]
         self.windows = [w for w in self.windows if w not in self._skip_windows]
 
-    def _train(self, points: List[_Point]) -> None:
+    def _train(self, points: List[Point]) -> None:
         self._check_series_length(points)
         self._train_data_pdf = pd.DataFrame(
             [dataclasses.asdict(point) for point in points]
@@ -164,7 +164,7 @@ class SimpleModel(Model):
         return [value]
 
 
-def _create_train_data_for_merlion_models(points: List[_Point]) -> MerlionTimeSeries:
+def _create_train_data_for_merlion_models(points: List[Point]) -> MerlionTimeSeries:
     ts_as_seconds = [p.ts.timestamp() for p in points]
     return MerlionTimeSeries(
         univariates=[
@@ -203,7 +203,7 @@ class AutoSarimaModel(Model):
     def _reset(self) -> None:
         self.model.reset()
 
-    def _train(self, points: List[_Point]) -> None:
+    def _train(self, points: List[Point]) -> None:
         self.model.train(
             _create_train_data_for_merlion_models(points),
             train_config={"enforce_stationarity": True, "enforce_invertibility": True},
@@ -229,7 +229,7 @@ class AutoProphetModel(Model):
     def _reset(self) -> None:
         self.model.reset()
 
-    def _train(self, points: List[_Point]) -> None:
+    def _train(self, points: List[Point]) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter(action="ignore", category=FutureWarning)
             self.model.train(_create_train_data_for_merlion_models(points))
@@ -263,7 +263,7 @@ class DefaultModelFactory(BaseModelFactory):
         super().__init__(
             models={
                 SimpleModel.__name__: SimpleModel,
-                AutoSarimaModel.__name__: AutoSarimaModel,
+                # AutoSarimaModel.__name__: AutoSarimaModel,
                 AutoProphetModel.__name__: AutoProphetModel,
                 **(extra_models or {}),
             }

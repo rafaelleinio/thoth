@@ -260,14 +260,16 @@ class SqlRepository(AbstractRepository):
         self.session = session
 
     def _add_profiling(self, records: List[ProfilingReport]) -> None:
+        new_records = []
         for record in records:
             new_record = self.get_profiling(id_=record.id_profiling) or record
+            new_records.append(new_record)
             for key, value in record.dict().items():
                 setattr(new_record, key, value)
             self.session.add(new_record)
         self.session.commit()
-        for record in records:
-            self.session.refresh(record)
+        for new_record in new_records:
+            self.session.refresh(new_record)
 
     def _add_scoring(self, scoring: AnomalyScoring) -> None:
         new_record = self.get_scoring(id_=scoring.id_) or scoring
@@ -275,7 +277,7 @@ class SqlRepository(AbstractRepository):
             setattr(new_record, key, value)
         self.session.add(new_record)
         self.session.commit()
-        self.session.refresh(scoring)
+        self.session.refresh(new_record)
 
     def _add_optimization(self, optimization: AnomalyOptimization) -> None:
         new_record = (
@@ -285,7 +287,7 @@ class SqlRepository(AbstractRepository):
             setattr(new_record, key, value)
         self.session.add(new_record)
         self.session.commit()
-        self.session.refresh(optimization)
+        self.session.refresh(new_record)
 
     def _select_profiling(
         self, dataset_uri: str, start_ts: datetime.datetime, end_ts: datetime.datetime
@@ -338,4 +340,4 @@ class SqlRepository(AbstractRepository):
             setattr(new_record, key, value)
         self.session.add(new_record)
         self.session.commit()
-        self.session.refresh(dataset)
+        self.session.refresh(new_record)
