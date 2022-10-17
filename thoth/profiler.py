@@ -227,6 +227,9 @@ class ProfilingReport(SQLModel, table=True):
         """Get the set of all the metrics presented in the profiling."""
         return set(profiling_value.metric for profiling_value in self.profiling_values)
 
+    def __lt__(self, other: ProfilingReport) -> bool:
+        return self.ts < other.ts
+
 
 class Granularity:
     """Describe possible granularity for timestamp partitions."""
@@ -316,18 +319,15 @@ def profile(
     logger.info("👤 Profiling started ...")
     spark = spark or SparkSession.builder.getOrCreate()
     granularity = granularity or Granularity.DAY
-    logger.info(df.rdd.map(lambda row: row.asDict()).collect()[0])
     ts_transformed_df = _transform_ts_granularity(
         df=df, ts_column=ts_column, granularity=granularity
     )
-    logger.info(ts_transformed_df.rdd.map(lambda row: row.asDict()).collect()[0])
     ts_values: List[datetime.datetime] = sorted(
         ts_transformed_df.select(ts_column)
         .distinct()
         .rdd.flatMap(lambda x: x)
         .collect()
     )
-    logger.info(ts_values)
     logger.info(
         f"Processing {len(ts_values)} timestamps from {ts_values[0].isoformat()} to "
         f"{ts_values[-1].isoformat()}, with {granularity} granularity."

@@ -1,12 +1,12 @@
 import abc
 import dataclasses
 import datetime
-import os
 from typing import List, Optional, Sequence
 
 from loguru import logger
 
 from thoth import anomaly, profiler
+from thoth.util.dashboard import SCORING_VIEW, build_dashboard_link
 
 
 @dataclasses.dataclass
@@ -16,11 +16,6 @@ class AnomalousScore:
     metric: profiler.Metric
     score: float
     threshold: float
-
-
-def _build_dashboard_link(dataset_uri: str) -> str:
-    dashboard_url = os.environ.get("DASHBOARD_URL", "localhost:8501")
-    return f"{dashboard_url}"
 
 
 class NotificationHandler(abc.ABC):
@@ -59,7 +54,11 @@ class NotificationHandler(abc.ABC):
             dataset_uri=dataset_uri,
             ts=ts,
             anomalous_scores=anomalous_scores,
-            dashboard_link=_build_dashboard_link(dataset_uri=dataset_uri),
+            dashboard_link=build_dashboard_link(
+                dataset_uri=dataset_uri,
+                instances=list(set(a.metric.instance for a in anomalous_scores)),
+                view=SCORING_VIEW,
+            ),
         )
 
 
@@ -101,7 +100,7 @@ def assess_quality(
     ]
     anomalous_scores = [metric for metric in metrics if metric.score > metric.threshold]
     if anomalous_scores:
-        logger.error("⚠️Anomaly detected, notifying handlers...")
+        logger.error("🚨 ️Anomaly detected, notifying handlers...")
         for handler in notification_handlers or [LogHandler()]:
             handler.notify(
                 dataset_uri=anomaly_optimization.dataset_uri,

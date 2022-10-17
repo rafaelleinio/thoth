@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 from hashlib import sha1
 from typing import Any, List, Optional
@@ -7,17 +9,13 @@ from pydantic import BaseModel
 from sqlalchemy import Column as SqlAlchemyColumn
 from sqlmodel import Field, SQLModel
 
-from thoth.anomaly.models import BaseModelFactory, DefaultModelFactory
-from thoth.anomaly.optimization import AnomalyOptimization, MetricOptimization
-from thoth.base import TimeSeries, convert_to_timeseries
-from thoth.profiler import Metric, ProfilingReport
-from thoth.util.custom_typing import pydantic_column_type
+from thoth import anomaly, base, profiler, util
 
 
 class Score(BaseModel):
     """Holds the score and predicted value for a given metric."""
 
-    metric: Metric
+    metric: profiler.Metric
     value: float
     predicted: float
 
@@ -34,7 +32,7 @@ class AnomalyScoring(SQLModel, table=True):
     dataset_uri: str
     ts: datetime.datetime
     scores: List[Score] = Field(
-        sa_column=SqlAlchemyColumn(pydantic_column_type(List[Score]))
+        sa_column=SqlAlchemyColumn(util.custom_typing.pydantic_column_type(List[Score]))
     )
 
     @classmethod
@@ -45,22 +43,25 @@ class AnomalyScoring(SQLModel, table=True):
         super().__init__(**data)
         self.id_ = self._build_id(self.dataset_uri, self.ts)
 
-    def get_metric_score(self, metric: Metric) -> Score:
+    def get_metric_score(self, metric: profiler.Metric) -> Score:
         """Get the score for a given metric."""
         return [score_ for score_ in self.scores if score_.metric == metric].pop(0)
 
+    def __lt__(self, other: AnomalyScoring) -> bool:
+        return self.ts < other.ts
+
 
 def _score_model(
-    time_series: TimeSeries,
-    metric_optimization: MetricOptimization,
-    model_factory: BaseModelFactory,
+    ts: base.TimeSeries,
+    metric_optimization: anomaly.MetricOptimization,
+    model_factory: anomaly.BaseModelFactory,
 ) -> Score:
     logger.info(
         f"Scoring for metric={metric_optimization.metric} "
         f"with model={metric_optimization.best_model_name} started..."
     )
     model = model_factory.create_model(name=metric_optimization.best_model_name)
-    predicted, error = model.score(points=time_series.points)
+    predicted, error = model.score(points=ts.points)
     score_value = Score(
         metric=metric_optimization.metric, value=error, predicted=predicted
     )
@@ -69,21 +70,25 @@ def _score_model(
 
 
 def score(
-    profiling_history: List[ProfilingReport],
-    optimization: AnomalyOptimization,
-    model_factory: Optional[BaseModelFactory] = None,
+    profiling_history: List[profiler.ProfilingReport],
+    optimization: anomaly.AnomalyOptimization,
+    model_factory: Optional[anomaly.BaseModelFactory] = None,
 ) -> AnomalyScoring:
     """Calculate the anomaly score for a target dataset timestamp batch."""
     logger.info("💯 Scoring started...")
-    last_profiling_report = profiling_history[-1]
-    metrics_ts = convert_to_timeseries(profiling_history)
+    last_n_profiling_history = anomaly.get_last_n(
+        profiling_history=profiling_history, last_n=optimization.last_n
+    )
+    last_profiling_report = last_n_profiling_history[-1]
+    time_series = base.convert_to_timeseries(last_n_profiling_history)
+
     scores = [
         _score_model(
-            time_series=metric_ts,
-            metric_optimization=optimization.get_metric_optimization(metric_ts.metric),
-            model_factory=model_factory or DefaultModelFactory(),
+            ts=ts,
+            metric_optimization=optimization.get_metric_optimization(ts.metric),
+            model_factory=model_factory or anomaly.DefaultModelFactory(),
         )
-        for metric_ts in metrics_ts
+        for ts in time_series
     ]
     anomaly_scoring = AnomalyScoring(
         dataset_uri=last_profiling_report.dataset_uri,

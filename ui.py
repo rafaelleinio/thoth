@@ -2,6 +2,7 @@ import dataclasses
 from typing import List
 
 import streamlit as st
+import streamlit_permalink as stp
 from sqlmodel import Session
 
 import thoth as th
@@ -305,24 +306,30 @@ def build_dataset_metadata_text(dataset: th.Dataset) -> str:
 
 def home_page():
     st.markdown("# Select dataset")
-    with st.form(key="my_form"):
-        dataset_uri = st.selectbox(label="Dataset:", options=get_dataset_uris())
+    with stp.form("dataset-form"):
+        dataset_uri = stp.selectbox(
+            label="Dataset:", options=get_dataset_uris(), url_key="dataset_uri"
+        )
         dataset = get_dataset(dataset_uri=dataset_uri)
 
         expander = st.expander(label="Dataset metadata", expanded=False)
         expander.markdown(build_dataset_metadata_text(dataset=dataset))
 
-        selected_instances = st.multiselect(
+        instances = list(dataset.get_instances())
+        selected_instances = stp.multiselect(
             label="Select instances:",
-            options=list(dataset.get_instances()),
+            options=instances,
+            default=instances,
+            url_key="instances",
         )
 
-        view_option = st.radio(
+        view_option = stp.radio(
             label="Select view:",
             options=["👤 Profiling", "📈 Optimization", "💯 Scoring"],
             index=0,
+            url_key="view",
         )
-        submit_button = st.form_submit_button(label="✨ Get me the data!")
+        submit_button = stp.form_submit_button(label="✨ Get me the data!")
 
     if submit_button:
         if view_option == "👤 Profiling":
@@ -346,13 +353,21 @@ SUBPAGES = {
 
 
 def sidebar():
-    st.sidebar.image(
-        "https://i.imgur.com/UJwvBFC.png", caption="data profiling monitoring platform"
-    )
-    # st.sidebar.subheader("Index")
-    option = st.sidebar.radio("Index:", SUBPAGES.keys(), index=0)
+    with st.sidebar:
+        st.image(
+            "https://i.imgur.com/UJwvBFC.png",
+            caption="data profiling monitoring platform",
+        )
+        # st.sidebar.subheader("Index")s
+        option = stp.radio(
+            "Index:",
+            SUBPAGES.keys(),
+            index=0,
+            url_key="page",
+            on_change=lambda: st.experimental_set_query_params(),
+        )
+        st.sidebar.markdown("---")
     SUBPAGES[option]()
-    st.sidebar.markdown("---")
 
 
 def main():

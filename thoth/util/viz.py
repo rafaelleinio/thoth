@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List
 
 import pandas as pd
 import plotly.express as px
@@ -18,7 +18,7 @@ def plot_ts(ts: TimeSeries) -> Figure:
 
 
 def plot_validation_results(metric_optimization: MetricOptimization) -> Figure:
-    true_values = [
+    true_values: List[Dict[str, Any]] = [
         {
             "ts": point.ts,
             "value": round(point.true_value, 2),
@@ -26,7 +26,7 @@ def plot_validation_results(metric_optimization: MetricOptimization) -> Figure:
         }
         for point in metric_optimization.validation_results[0].points
     ]
-    model_values = [
+    model_values: List[Dict[str, Any]] = [
         {
             "ts": point.ts,
             "value": round(point.predicted, 2) if point.predicted else None,
@@ -108,7 +108,6 @@ def plot_predicted_values(
                 x=x_predicted,
                 y=y_predicted,
                 name="predicted",
-                # line=dict(color='rgb(0,100,80)'),
                 mode="lines",
                 line=dict(color="rgba(39, 174, 96,1.0)"),
             ),
@@ -117,21 +116,17 @@ def plot_predicted_values(
                 y=y_predicted_upper
                 + y_predicted_lower[::-1],  # upper, then lower reversed
                 fill="toself",
-                # fillcolor='rgba(0,100,80,0.2)',
-                # line=dict(color='rgba(255,255,255,0)'),
                 hoverinfo="skip",
                 name="expected interval",
                 fillcolor="green",
                 mode="lines",
                 line=dict(width=0),
                 opacity=0.25,
-                # showlegend=False
             ),
             go.Scatter(
                 x=x_observed,
                 y=y_observed,
                 name="observed",
-                # line=dict(color='rgb(0,100,80)'),
                 mode="lines",
                 line=dict(color="rgba(211, 84, 0,1.0)"),
             ),

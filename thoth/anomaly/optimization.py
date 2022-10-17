@@ -73,6 +73,8 @@ class AnomalyOptimization(SQLModel, table=True):
     Attributes:
         dataset_uri: dataset URI.
         confidence: target confidence for the optimization.
+        metric_optimizations:
+        last_n: the model should be trained for the last_n points in the given series.
 
     """
 
@@ -81,6 +83,7 @@ class AnomalyOptimization(SQLModel, table=True):
     metric_optimizations: List[MetricOptimization] = Field(
         sa_column=SqlAlchemyColumn(pydantic_column_type(List[MetricOptimization]))
     )
+    last_n: Optional[int] = None
 
     def get_metric_optimization(self, metric: Metric) -> MetricOptimization:
         """Get one specific metric optimization from the metric_optimizations att."""
@@ -248,17 +251,31 @@ def _optimize_time_series(
     )
 
 
+def get_last_n(
+    profiling_history: List[ProfilingReport], last_n: Optional[int]
+) -> List[ProfilingReport]:
+    """Get the last_n points in a profiling history series."""
+    n = last_n or len(profiling_history)
+    return profiling_history[-n:]
+
+
 def optimize(
     profiling_history: List[ProfilingReport],
     start_proportion: Optional[float] = None,
     confidence: Optional[float] = None,
     model_factory: Optional[BaseModelFactory] = None,
+    last_n: Optional[int] = None,
 ) -> AnomalyOptimization:
     """Optimize the anomaly strategy for a given dataset using its profiling history."""
     logger.info("📈️ Optimization started ...")
     confidence = confidence or 0.95
-    last_profiling_report = profiling_history[-1]
-    time_series = convert_to_timeseries(profiling_history)
+
+    last_n_profiling_history = get_last_n(
+        profiling_history=profiling_history, last_n=last_n
+    )
+    last_profiling_report = last_n_profiling_history[-1]
+    time_series = convert_to_timeseries(last_n_profiling_history)
+
     metric_anomaly_optimization_report = [
         _optimize_time_series(
             ts=ts,
@@ -273,4 +290,5 @@ def optimize(
         dataset_uri=last_profiling_report.dataset_uri,
         confidence=confidence,
         metric_optimizations=metric_anomaly_optimization_report,
+        last_n=last_n,
     )

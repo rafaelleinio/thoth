@@ -8,12 +8,13 @@ from thoth import anomaly, profiler
 class TestAnomalyScoring:
     def test_score(self, base_profiling_history):
         # arrange
+        metric = profiler.Metric(entity="Column", instance="f1", name="Mean")
         target_anomaly_scoring = anomaly.AnomalyScoring(
             dataset_uri="my_dataset",
             ts=base_profiling_history[-1].ts,
             scores=[
                 anomaly.Score(
-                    metric=profiler.Metric(entity="Column", instance="f1", name="Mean"),
+                    metric=metric,
                     value=0.15517241379310331,
                     predicted=14.700000000000001,
                 )
@@ -41,6 +42,7 @@ class TestAnomalyScoring:
 
         # assert
         assert output_anomaly_scoring == target_anomaly_scoring
+        assert output_anomaly_scoring.get_metric_score(metric=metric).value < 0.2
 
     def test__convert_to_timeseries(self, base_profiling_history, json_data):
         # arrange
@@ -64,3 +66,24 @@ class TestAnomalyScoring:
 
         # assert
         assert output_time_series == target_output_time_series
+
+    def test_sorting(self):
+        # arrange
+        scorings = [
+            anomaly.AnomalyScoring(
+                dataset_uri="my_dataset",
+                ts=datetime.datetime(2022, 1, 2),
+                scores=[],
+            ),
+            anomaly.AnomalyScoring(
+                dataset_uri="my_dataset",
+                ts=datetime.datetime(2022, 1, 1),
+                scores=[],
+            ),
+        ]
+
+        # act
+        sorted_scorings = sorted(scorings)
+
+        # assert
+        assert sorted_scorings[0].ts == datetime.datetime(2022, 1, 1)

@@ -19,6 +19,7 @@ from thoth.profiler import (
     ProfilingBuilder,
     ProfilingReport,
     ProfilingValue,
+    SimpleProfilingBuilder,
     profile,
 )
 from thoth.testing.dataframe import create_df_from_collection
@@ -62,6 +63,9 @@ class TestProfilingBuilder:
     def test_value_error(self):
         with pytest.raises(ValueError):
             ProfilingBuilder()
+
+    def test_simple_profiling_builder(self):
+        assert isinstance(SimpleProfilingBuilder(), ProfilingBuilder)
 
 
 def test_profile(spark_context, spark_session):

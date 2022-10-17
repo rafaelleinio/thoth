@@ -14,6 +14,7 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import (
     DoubleType,
     IntegerType,
+    Row,
     StringType,
     StructField,
     StructType,
@@ -81,8 +82,8 @@ class NormalPercentageDeviation(RandomGenerator):
 
 @dataclass(frozen=True)
 class TimeSeries:
-    date_points: np.ndarray
-    value_points: np.ndarray
+    date_points: np.typing.NDArray[np.float64]
+    value_points: np.typing.NDArray[np.float64]
 
 
 class TimeSeriesGenerator:
@@ -123,7 +124,7 @@ class FeatureGenerator(ABC):
     def __init__(
         self,
         name: str,
-        nulls_proportion: Optional[float] = 0.0,
+        nulls_proportion: float = 0.0,
         nulls_proportion_noise: Optional[RandomGenerator] = None,
     ):
         self.name = name
@@ -140,7 +141,7 @@ class FeatureGenerator(ABC):
         return self.nulls_proportion * self.nulls_proportion_noise.generate()
 
     def generate(
-        self, time_context: TimeContext, nulls_proportion: Optional[float] = None
+        self, time_context: TimeContext, nulls_proportion: float = None
     ) -> Any:
         if (secrets.randbelow(10000) / 10000) < (
             nulls_proportion or self.generate_nulls_proportion()
@@ -166,7 +167,7 @@ class IdFeatureGenerator(FeatureGenerator):
         min_id: int = 1,
         max_id: int = 1_000_000_000,
         monotonically_increase: bool = False,
-        nulls_proportion: Optional[float] = 0.0,
+        nulls_proportion: float = 0.0,
         nulls_proportion_noise: Optional[RandomGenerator] = None,
     ):
         super().__init__(name, nulls_proportion, nulls_proportion_noise)
@@ -195,7 +196,7 @@ class TimestampFeatureGenerator(FeatureGenerator):
     def __init__(
         self,
         name: str,
-        nulls_proportion: Optional[float] = 0.0,
+        nulls_proportion: float = 0.0,
         nulls_proportion_noise: Optional[RandomGenerator] = None,
     ):
         super().__init__(name, nulls_proportion, nulls_proportion_noise)
@@ -225,7 +226,7 @@ class NumericFeatureGenerator(FeatureGenerator):
         name: str,
         base_value: float,
         noise: Optional[RandomGenerator] = None,
-        nulls_proportion: Optional[float] = 0.0,
+        nulls_proportion: float = 0.0,
         nulls_proportion_noise: Optional[RandomGenerator] = None,
     ):
         super().__init__(name, nulls_proportion, nulls_proportion_noise)
@@ -248,10 +249,10 @@ class TimeSensitiveNumericFeatureGenerator(FeatureGenerator):
     def __init__(
         self,
         name: str,
-        trend: Optional[Trend],
+        trend: Trend,
         seasonality: Optional[Seasonality] = None,
         noise: Optional[RandomGenerator] = None,
-        nulls_proportion: Optional[float] = 0.0,
+        nulls_proportion: float = 0.0,
         nulls_proportion_noise: Optional[RandomGenerator] = None,
     ):
         super().__init__(name, nulls_proportion, nulls_proportion_noise)
@@ -280,7 +281,7 @@ class TextFeatureGenerator(FeatureGenerator):
         name: str,
         max_base_length: int,
         percentage_deviation_generator: Optional[RandomGenerator] = None,
-        nulls_proportion: Optional[float] = 0.0,
+        nulls_proportion: float = 0.0,
         nulls_proportion_noise: Optional[RandomGenerator] = None,
     ):
         super().__init__(name, nulls_proportion, nulls_proportion_noise)
@@ -293,7 +294,7 @@ class TextFeatureGenerator(FeatureGenerator):
 
     def _generate(self, time_context: TimeContext) -> str:
         max_length = self.max_base_length * self.percentage_deviation.generate()
-        return self.fake.text(max_nb_chars=max_length)
+        return str(self.fake.text(max_nb_chars=max_length))
 
     @property
     def pandas_field(self) -> Dict[str, str]:
@@ -309,7 +310,7 @@ class CategoryFeatureGenerator(FeatureGenerator):
         self,
         name: str,
         categories: List[str],
-        nulls_proportion: Optional[float] = 0.0,
+        nulls_proportion: float = 0.0,
         nulls_proportion_noise: Optional[RandomGenerator] = None,
     ):
         super().__init__(name, nulls_proportion, nulls_proportion_noise)
@@ -354,7 +355,7 @@ class BatchDatasetGenerator:
         ]
         return records
 
-    def generate(self, start_ts: datetime, n: int) -> List[Dict[Any]]:
+    def generate(self, start_ts: datetime, n: int) -> List[Dict[str, Any]]:
         time_points = [
             TimeContext(start_ts=start_ts, ts=ts)
             for ts in pd.date_range(start_ts, periods=n).tolist()
@@ -382,7 +383,7 @@ class BatchDatasetGenerator:
         self, dataset: List[Dict[str, Any]], spark: SparkSession
     ) -> DataFrame:
         return spark.createDataFrame(
-            data=dataset,
+            data=[Row(**r) for r in dataset],
             schema=StructType(
                 fields=[feature.spark_field for feature in self.features]
             ),

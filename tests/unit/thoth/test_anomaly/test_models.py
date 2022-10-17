@@ -164,6 +164,7 @@ class TestAutoSarimaModel:
                 for record in json_data
             ]
         )
+        model.reset()
 
         # assert
         assert score < 0.18  # less than 18% of absolute percentage error
@@ -184,6 +185,7 @@ class TestAutoProphetModel:
                 for record in json_data
             ]
         )
+        model.reset()
 
         # assert
         assert score < 0.23

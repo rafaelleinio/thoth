@@ -91,6 +91,7 @@ def test_e2e_flow_with_anomaly(json_data, spark_session, caplog):
         [data_point for data_point in series if data_point.get("ts") == "1981-12-31"],
         schema="ts string, value float",
     )
+    dataset_uri = "temperatures"
 
     model_factory = SimpleModelFactory()
 
@@ -101,27 +102,40 @@ def test_e2e_flow_with_anomaly(json_data, spark_session, caplog):
         service_layer.init_db(engine=engine)
         _, _ = service_layer.profile_create_optimize(
             df=normal_history_df,
-            dataset_uri="temperatures",
+            dataset_uri=dataset_uri,
             ts_column="ts",
             profiling_builder=ProfilingBuilder(analyzers=[Mean(column="value")]),
             model_factory=model_factory,
             session=session,
             spark=spark_session,
         )
+        dataset = service_layer.get_dataset(dataset_uri=dataset_uri, session=session)
+        profiling = service_layer.select_profiling(
+            dataset_uri=dataset_uri, session=session
+        )
+        optimization = service_layer.get_optimization(
+            dataset_uri=dataset_uri, session=session
+        )
+
         result = service_layer.assess_new_ts(
             df=new_anomalous_point_df,
             ts=datetime.datetime(year=1981, month=12, day=31),
-            dataset_uri="temperatures",
+            dataset_uri=dataset_uri,
             profiling_builder=ProfilingBuilder(analyzers=[Mean(column="value")]),
             model_factory=model_factory,
             session=session,
             spark=spark_session,
             notification_handlers=[LogHandler()],
         )
+        scoring = service_layer.get_scoring(dataset_uri=dataset_uri, session=session)
 
-    # assert
-    assert "Anomaly detected for ts=1981-12-31" in caplog.text
-    assert result is False
+        # assert
+        assert dataset.uri == dataset_uri
+        assert len(profiling) == 14
+        assert len(optimization.metric_optimizations) == 1
+        assert "Anomaly detected for ts=1981-12-31" in caplog.text
+        assert result is False
+        assert len(scoring) == 1
 
 
 def test_score_exception():
@@ -165,17 +179,30 @@ def test_profile_exception(session):
 
 def test_get_datasets(session):
     # arrange
-    dataset = Dataset(
-        uri="my-dataset",
-        ts_column="ts",
-        columns=["f1"],
-        granularity=Granularity.DAY,
-        metrics=[Metric(entity="Column", instance="f1", name="Mean")],
+    service_layer.add_dataset(
+        dataset=Dataset(
+            uri="dataset-b",
+            ts_column="ts",
+            columns=["f1"],
+            granularity=Granularity.DAY,
+            metrics=[Metric(entity="Column", instance="f1", name="Mean")],
+        ),
+        session=session,
     )
-    service_layer.add_dataset(dataset=dataset, session=session)
+    service_layer.add_dataset(
+        dataset=Dataset(
+            uri="dataset-a",
+            ts_column="ts",
+            columns=["f1"],
+            granularity=Granularity.DAY,
+            metrics=[Metric(entity="Column", instance="f1", name="Mean")],
+        ),
+        session=session,
+    )
 
     # act
     output = service_layer.get_datasets(session=session)
 
     # assert
-    assert output == [dataset]
+    assert len(output) == 2
+    assert output[0].uri == "dataset-a"

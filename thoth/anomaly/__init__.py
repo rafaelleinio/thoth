@@ -4,7 +4,12 @@ from thoth.anomaly.models import (
     DefaultModelFactory,
     SimpleModelFactory,
 )
-from thoth.anomaly.optimization import AnomalyOptimization, MetricOptimization, optimize
+from thoth.anomaly.optimization import (
+    AnomalyOptimization,
+    MetricOptimization,
+    get_last_n,
+    optimize,
+)
 from thoth.anomaly.scoring import AnomalyScoring, Score, score
 
 __all__ = [
@@ -18,4 +23,5 @@ __all__ = [
     "DefaultModelFactory",
     "SimpleModelFactory",
     "models",
+    "get_last_n",
 ]

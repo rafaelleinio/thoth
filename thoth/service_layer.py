@@ -7,7 +7,7 @@ from pyspark.sql import DataFrame, SparkSession
 from sqlalchemy.future import Engine as _FutureEngine
 from sqlmodel import Session, SQLModel, create_engine
 
-from thoth import anomaly, profiler, quality, repository
+from thoth import anomaly, profiler, quality, repository, util
 from thoth.dataset import Dataset
 from thoth.profiler import Granularity
 
@@ -25,9 +25,12 @@ def build_engine() -> _FutureEngine:
     return create_engine(_build_connection_string())
 
 
-def init_db(engine: Optional[_FutureEngine] = None) -> None:
+def init_db(engine: Optional[_FutureEngine] = None, clear=False) -> None:
     """Initialize the database with all models declared in domain."""
-    SQLModel.metadata.create_all(engine or build_engine())
+    engine = engine or build_engine()
+    if clear:
+        SQLModel.metadata.drop_all(engine)
+    SQLModel.metadata.create_all(engine)
 
 
 def _build_repo(
@@ -186,6 +189,10 @@ def profile(
         spark=spark,
     )
     repo.add_profiling(dataset_uri=dataset_uri, records=profiling_records)
+    url = util.dashboard.build_dashboard_link(
+        dataset_uri=dataset_uri, view=util.dashboard.PROFILING_VIEW
+    )
+    logger.info(f"🧐 You can now check the profiling metrics in the dashboard: {url}")
     return profiling_records
 
 
@@ -271,6 +278,10 @@ def optimize(
         model_factory=model_factory,
     )
     repo.add_optimization(optimization=optimization)
+    url = util.dashboard.build_dashboard_link(
+        dataset_uri=dataset_uri, view=util.dashboard.OPTIMIZATION_VIEW
+    )
+    logger.info(f"🧐 You can now check the dataset optimization in the dashboard: {url}")
     return optimization
 
 

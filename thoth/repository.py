@@ -28,10 +28,10 @@ def _normalize_start_end_ts(
 def _validate_profiling_records(
     dataset: Dataset, profiling_records: List[ProfilingReport]
 ) -> None:
-    profiling_records_metrics = set(
-        sum([list(pr.get_metrics()) for pr in profiling_records], [])
+    profiling_records_metrics = list(
+        set(sum([list(pr.get_metrics()) for pr in profiling_records], []))
     )
-    if list(profiling_records_metrics) != dataset.metrics:
+    if sorted(profiling_records_metrics) != sorted(dataset.metrics):
         raise MetricsRepositoryError(
             "Given profiling have different metrics than the dataset."
             f"\nProfiling metrics={profiling_records_metrics}."
@@ -129,9 +129,10 @@ class AbstractRepository(abc.ABC):
 
         """
         start_ts, end_ts = _normalize_start_end_ts(start_ts, end_ts)
-        return self._select_profiling(
+        profiling = self._select_profiling(
             dataset_uri=dataset_uri, start_ts=start_ts, end_ts=end_ts
         )
+        return sorted(profiling)
 
     @abc.abstractmethod
     def _select_profiling(
@@ -173,9 +174,10 @@ class AbstractRepository(abc.ABC):
 
         """
         start_ts, end_ts = _normalize_start_end_ts(start_ts, end_ts)
-        return self._select_scoring(
+        scoring = self._select_scoring(
             dataset_uri=dataset_uri, start_ts=start_ts, end_ts=end_ts
         )
+        return sorted(scoring)
 
     @abc.abstractmethod
     def _select_scoring(
@@ -233,7 +235,7 @@ class AbstractRepository(abc.ABC):
 
     def get_datasets(self) -> List[Dataset]:
         """Get all datasets registered in the Metrics Repository."""
-        return self._get_datasets()
+        return sorted(self._get_datasets())
 
     @abc.abstractmethod
     def _get_datasets(self) -> List[Dataset]:

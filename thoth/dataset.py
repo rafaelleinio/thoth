@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Set
 
 from sqlalchemy import Column as SqlAlchemyColumn
@@ -31,3 +33,6 @@ class Dataset(SQLModel, table=True):
     def get_instances(self) -> Set[str]:
         """Get the set of all instances presented in the metrics."""
         return set(metric.instance for metric in self.metrics)
+
+    def __lt__(self, other: Dataset) -> bool:
+        return self.uri < other.uri
