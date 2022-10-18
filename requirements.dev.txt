@@ -11,6 +11,7 @@ pytest-env
 # code quality
 isort
 black
+black[jupyter]
 mypy
 flake8
 flake8-docstrings

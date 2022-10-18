@@ -1,11 +1,12 @@
-version: '3'
+version: '3.4'
 services:
-  app:
+  ui:
     build:
       context: .
       dockerfile: Dockerfile
+      target: ui
     environment:
-      - DATABASE_URL="postgresql+pg8000://postgres:postgres@db:5432/metrics_repository"
+      - DATABASE_URL=postgresql+pg8000://postgres:postgres@db:5432/metrics_repository
     ports:
       - "8501:8501"
     depends_on:
@@ -21,6 +22,19 @@ services:
       - "5432:5432"
     volumes:
       - db:/var/lib/postgresql/data
+  notebook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: thoth
+    command: ["jupyter", "notebook", "--allow-root", "--ip", "0.0.0.0", "--NotebookApp.token=''", "--NotebookApp.password=''", "--no-browser", "--notebook-dir=/app/examples/"]
+#      - jupyter notebook --allow-root --ip 0.0.0.0 --NotebookApp.token='' --NotebookApp.password='' --no-browser --notebook-dir=/app/examples/
+    environment:
+      - DATABASE_URL=postgresql+pg8000://postgres:postgres@db:5432/metrics_repository
+    ports:
+      - "8888:8888"
+    depends_on:
+      - ui
 volumes:
   db:
     driver: local

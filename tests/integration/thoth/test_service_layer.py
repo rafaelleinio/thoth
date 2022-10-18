@@ -99,7 +99,7 @@ def test_e2e_flow_with_anomaly(json_data, spark_session, caplog):
 
     # act
     with Session(engine) as session:
-        service_layer.init_db(engine=engine)
+        service_layer.init_db(engine=engine, clear=True)
         _, _ = service_layer.profile_create_optimize(
             df=normal_history_df,
             dataset_uri=dataset_uri,

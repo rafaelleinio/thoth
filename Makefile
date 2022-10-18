@@ -95,7 +95,15 @@ version:
 .PHONY: app
 ## create db infra with docker compose
 app:
-	@docker compose -f docker-compose.yaml up
+	@docker compose build
+	@docker compose -f docker-compose.yaml up ui
+
+.PHONY: notebook-examples
+## run a jupyter notebook service to easily run the examples
+notebook-examples:
+#	@docker build --target thoth -t thoth .
+#	@docker run -p 8888:8888 thoth jupyter notebook --allow-root --ip 0.0.0.0 --NotebookApp.token='' --NotebookApp.password='' --no-browser --notebook-dir=examples/
+	@docker compose -f docker-compose.yaml up notebook
 
 .PHONY: teardown
 ## teardown all infra on docker compose

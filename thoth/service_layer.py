@@ -25,7 +25,7 @@ def build_engine() -> _FutureEngine:
     return create_engine(_build_connection_string())
 
 
-def init_db(engine: Optional[_FutureEngine] = None, clear=False) -> None:
+def init_db(engine: Optional[_FutureEngine] = None, clear: bool = False) -> None:
     """Initialize the database with all models declared in domain."""
     engine = engine or build_engine()
     if clear:
@@ -208,7 +208,7 @@ def profile_create(
 ) -> List[profiler.ProfilingReport]:
     """Run a profiling pipeline and the creation of the dataset.
 
-    For help with the arguments check the other services docstrings.
+    For help with the arguments check the 'profile' service docstring.
 
     """
     repo = _build_repo(repo=repo, session=session)
@@ -397,7 +397,7 @@ def profile_create_optimize(
     This service is very useful to onboard a brand-new dataset to the metrics
     repository.
 
-    For help with the arguments check the other services docstrings.
+    For help with the arguments check 'profile' and 'optimize' services docstrings.
 
     """
     logger.info("Pipeline started 👤 📈 ...")
@@ -438,7 +438,7 @@ def assess_new_ts(
 ) -> bool:
     """Run a profiling pipeline, scoring and assessment for a new data batch timestamp.
 
-    For help with the arguments check the other services docstrings.
+    For help with the arguments check 'profile' and 'score' services docstrings.
 
     """
     logger.info("Pipeline started 👤 💯 🔍️ ...")

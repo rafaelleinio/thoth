@@ -14,12 +14,13 @@ RUN env | grep _ >> /etc/environment
 
 ## setup package
 FROM dependencies as thoth
+WORKDIR /app
 
-COPY . .
-RUN pip install .
+COPY . /app
+RUN pip install /app/.
 RUN python -c "import thoth"
 
 ## start UI
 FROM thoth as ui
 
-CMD streamlit run ui.py
+CMD streamlit run /app/ui.py
