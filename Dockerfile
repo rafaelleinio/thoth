@@ -12,11 +12,12 @@ RUN pip install -r requirements.txt
 ENV SPARK_VERSION 3.0
 RUN env | grep _ >> /etc/environment
 
+WORKDIR /app
+COPY . /app
+
 ## setup package
 FROM dependencies as thoth
-WORKDIR /app
 
-COPY . /app
 RUN pip install /app/.
 RUN python -c "import thoth"
 
