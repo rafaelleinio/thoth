@@ -1,7 +1,3 @@
-> ⚠️ **WIP** 👷 - soon to be released to [pypi.org](https://pypi.org)
-
-____
-
 ![](https://i.imgur.com/UJwvBFC.png)
 
 _data profiling monitoring platform_
@@ -18,6 +14,15 @@ _data profiling monitoring platform_
 ![Pandas](https://img.shields.io/badge/pandas-%23150458.svg?style=for-the-badge&logo=pandas&logoColor=white)
 ![Plotly](https://img.shields.io/badge/Plotly-%233F4F75.svg?style=for-the-badge&logo=plotly&logoColor=white)
 
+### Build status
+| Test                                                                                                                                                    | Release                                                                                                                                                          |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![Test](https://github.com/rafaelleinio/thoth/actions/workflows/test.yml/badge.svg)](https://github.com/rafaelleinio/thoth/actions/workflows/test.yml) | [![Release](https://github.com/rafaelleinio/thoth/actions/workflows/release.yml/badge.svg)](https://github.com/rafaelleinio/thoth/actions/workflows/release.yml) |
+
+### Package
+| Source   | Downloads                                                   | Page                                      | Installation Command  |
+|----------|-------------------------------------------------------------|-------------------------------------------|-----------------------|
+| **PyPi** | ![PyPI - Downloads](https://img.shields.io/pypi/dm/pythoth) | [Link](https://pypi.org/project/pythoth/) | `pip install pythoth` |
 
 # Introduction
 While the data and AI-driven culture emerge in several organizations, it is well
@@ -103,11 +108,6 @@ will redirect you to the dashboard, which **explains the decision of the system*
 
 > _💡 While this example showed just a warning log, is possible to configure any custom 
 > logic for the notification (like emails, slack, etc...)_
-
-## Install the Thoth Python framework
-```shell
-pip install pythoth
-```
 
 ## Quick Start in 2 simple steps
 
