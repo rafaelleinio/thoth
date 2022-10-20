@@ -16,6 +16,7 @@ from thoth.__metadata__ import (
     __title__,
     __url__,
     __version__,
+    __package_title__
 )
 from thoth.service_layer import (
     Dataset,
@@ -68,4 +69,5 @@ __all__ = [
     "__title__",
     "__url__",
     "__version__",
+    "__package_title__"
 ]

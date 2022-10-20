@@ -1,6 +1,7 @@
 """Metadata module."""
 
 __title__: str = "thoth"
+__package_title__: str = "pythoth"
 __description__: str = (
     "Python tool for profiling-based anomaly monitoring on ETL data pipelines "
     "leveraging ML and Apache Spark."
