@@ -4,12 +4,12 @@ VERSION := $(shell grep __version__ thoth/__metadata__.py | head -1 | cut -d \" 
 .PHONY: requirements-dev
 ## install development requirements
 requirements-dev:
-	@PYTHONPATH=. pip install -U -r requirements.dev.txt
+	@pip install -U -r requirements.dev.txt
 
 .PHONY: requirements-minimum
 ## install prod requirements
 requirements-minimum:
-	@PYTHONPATH=. pip install -U -r requirements.txt
+	@pip install -U -r requirements.txt
 
 .PHONY: requirements
 ## install requirements
@@ -23,7 +23,7 @@ tests:
 	@echo "Tests"
 	@echo "=========="
 	@echo ""
-	@python -m pytest -W ignore::DeprecationWarning --cov-report term --cov-report html:tests-cov --cov=thoth --cov-fail-under=100 tests/
+	@pytest -W ignore::DeprecationWarning --cov-report term --cov-report html:tests-cov --cov=thoth --cov-fail-under=100 tests/
 
 .PHONY: unit-tests
 ## run unit tests with coverage report
@@ -32,7 +32,7 @@ unit-tests:
 	@echo "Unit Tests"
 	@echo "=========="
 	@echo ""
-	@python -m pytest -W ignore::DeprecationWarning --cov-config=.coveragerc --cov-report term --cov=thoth tests/unit
+	@pytest -W ignore::DeprecationWarning --cov-config=.coveragerc --cov-report term --cov=thoth tests/unit
 
 .PHONY: integration-tests
 ## run integration tests with coverage report
@@ -50,7 +50,7 @@ style-check:
 	@echo "Code Style"
 	@echo "=========="
 	@echo ""
-	@python -m black --check -t py36 --exclude="build/|buck-out/|dist/|_build/|pip/|\.pip/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/" . && echo "\n\nSuccess" || (echo "\n\nFailure\n\nRun \"make black\" to apply style formatting to your code"; exit 1)
+	@black --check -t py36 --exclude="build/|buck-out/|dist/|_build/|pip/|\.pip/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/" . && echo "\n\nSuccess" || (echo "\n\nFailure\n\nRun \"make black\" to apply style formatting to your code"; exit 1)
 
 .PHONY: quality-check
 ## run code quality checks with flake8
@@ -59,7 +59,7 @@ quality-check:
 	@echo "Flake 8"
 	@echo "======="
 	@echo ""
-	@python -m flake8 && echo "Success"
+	@flake8 && echo "Success"
 	@echo ""
 
 .PHONY: type-check
@@ -69,7 +69,7 @@ type-check:
 	@echo "Mypy"
 	@echo "======="
 	@echo ""
-	@python -m mypy --install-types --non-interactive thoth && echo "Success"
+	@mypy --install-types --non-interactive thoth && echo "Success"
 	@echo ""
 
 .PHONY: checks
@@ -79,13 +79,13 @@ checks: style-check quality-check type-check
 .PHONY: apply-style
 ## fix stylistic errors with black and isort
 apply-style:
-	@python -m black -t py36 --exclude="build/|buck-out/|dist/|_build/|pip/|\\.pip/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/" .
-	@python -m isort thoth/ tests/
+	@black -t py36 --exclude="build/|buck-out/|dist/|_build/|pip/|\\.pip/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/" .
+	@isort thoth/ tests/
 
 .PHONY: package
 ## build thoth package wheel
 package:
-	@PYTHONPATH=. python -m setup sdist bdist_wheel
+	@python -m setup sdist bdist_wheel
 
 .PHONY: version
 ## show version

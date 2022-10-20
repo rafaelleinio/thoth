@@ -1,0 +1,23 @@
+name: "Test"
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  Pipeline:
+    runs-on: ubuntu-latest
+    container: docker
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build Image
+      run: docker build -t thoth --target dependencies .
+
+    - name: Checks
+      run: docker run thoth make checks
+
+    - name: Tests
+      run: docker run thoth make tests

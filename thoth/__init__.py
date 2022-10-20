@@ -9,6 +9,15 @@ from thoth import (
     testing,
     util,
 )
+from thoth.__metadata__ import (
+    __author__,
+    __description__,
+    __license__,
+    __title__,
+    __url__,
+    __version__,
+    __package_title__
+)
 from thoth.service_layer import (
     Dataset,
     add_dataset,
@@ -54,4 +63,11 @@ __all__ = [
     "get_scoring",
     "Dataset",
     "base",
+    "__author__",
+    "__description__",
+    "__license__",
+    "__title__",
+    "__url__",
+    "__version__",
+    "__package_title__"
 ]
