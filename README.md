@@ -4,7 +4,7 @@ ____
 
 ![](https://i.imgur.com/UJwvBFC.png)
 
-_data quality profiling monitoring tool._
+_data profiling monitoring platform_
 
 ![Python Version](https://img.shields.io/badge/python-3.9-brightgreen.svg)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -78,13 +78,31 @@ th.profile_create_optimize(
 # assessing data quality for a new batch of data
 th.assess_new_ts(
     df=new_batch_df,
-    ts=datetime.datetime(1981, 12, 26),
+    ts=datetime.datetime(1981, 12, 30),
     dataset_uri="temperatures",
     session=session
 )
-
-
 ```
+
+If a anomaly is detected for a new batch of data, this is the log you will receive
+```
+2022-10-20 14:44:20.959 | INFO     | thoth.quality:assess_quality:90 - 🔍️ Assessing quality for ts=1981-12-30 00:00:00 ...
+2022-10-20 14:44:20.971 | ERROR    | thoth.quality:assess_quality:103 - 🚨 ️Anomaly detected, notifying handlers...
+2022-10-20 14:44:20.972 | ERROR    | thoth.quality:_notify:75 - Anomaly detected for ts=1981-12-30 00:00:00 on dataset_uri=temperatures!
+The following metrics have scores above the defined threshold by the optimization: [AnomalousScore(metric=Metric(entity='Column', instance='value', name='Completeness'), score=0.2275986301072123, threshold=0.08)]. 
+Please check the dataset dashboard for more information: http://localhost:8501/?dataset_uri=temperatures&view=%F0%9F%92%AF+Scoring&instances=value
+2022-10-20 14:44:20.973 | INFO     | thoth.quality:assess_quality:110 - 🔍️ Quality assessment finished, handlers notified!
+2022-10-20 14:44:20.973 | INFO     | thoth.service_layer:assess_new_ts:493 - Pipeline finished!
+```
+
+Accessing the link in the logs 
+(http://localhost:8501/?dataset_uri=temperatures&view=%F0%9F%92%AF+Scoring&instances=value)
+will redirect you to the dashboard, which **explains the decision of the system**.
+
+![img.png](media/anomaly_scoring.png)
+
+> _💡 While this example showed just a warning log, is possible to configure any custom 
+> logic for the notification (like emails, slack, etc...)_
 
 ## Install the Thoth Python framework
 ```shell
@@ -99,15 +117,22 @@ pip install pythoth
 make app
 ```
 Now the database for the Metrics Repository should be up and running, you can also 
-access the dashboard at http://localhost:8543
-
-![img.png](media/dashboard.png)
+access the dashboard at http://localhost:8501. But wait ✋ You don't have any data there 
+yet to monitor. Let's start profiling and analyzing sampling datasets to get started!
 
 ### 2) Test the framework with the example notebooks (docker compose)
+This command will spin-up another container with a Jupyter Notebook server with all the 
+dependencies installed so you can test the framework easily.
 ```
 make notebook-examples
 ```
-You can open the notebook at http://localhost:8888
+You can open the notebook at http://localhost:8888. You should see the examples folder, 
+start by the first example notebook.
+
+After running the thoth commands there, you should be able to visualize the dataset and 
+metrics in the UI:
+
+![img.png](media/dashboard.png)
 
 ## Development
 After creating your virtual environment:

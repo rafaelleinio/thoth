@@ -21,13 +21,17 @@ def about_page():
     ### Useful links:
     - [Thoth homepage](https://github.com/rafaelleinio/thoth)
     - [Notebook examples](https://github.com/rafaelleinio/thoth/tree/main/examples)
-    - [Docs]()
-    - [PyPI]()
+    - [PyPI](https://pypi.org/project/pythoth/)
+    - Docs (WIP 🚧)
 
     Made with ❤️ by [@rafaelleinio](https://github.com/rafaelleinio)
 
     """
     st.markdown(md)
+
+
+def is_db_initialized() -> bool:
+    return th.is_db_initialized()
 
 
 def get_dataset_uris() -> List[str]:
@@ -305,11 +309,25 @@ def build_dataset_metadata_text(dataset: th.Dataset) -> str:
 
 
 def home_page():
+    if not is_db_initialized():
+        st.error("The Metrics Repository db is not yet initialized!", icon="🚨")
+        return
+    datasets = get_dataset_uris()
     st.markdown("# Select dataset")
+
+    if not datasets:
+        st.warning(
+            "There is still no dataset registered in the Metrics Repository, "
+            "why don't you start profiling? 🤗",
+            icon="⚠️",
+        )
+        return
+
     with stp.form("dataset-form"):
         dataset_uri = stp.selectbox(
-            label="Dataset:", options=get_dataset_uris(), url_key="dataset_uri"
+            label="Dataset:", options=datasets, url_key="dataset_uri"
         )
+
         dataset = get_dataset(dataset_uri=dataset_uri)
 
         expander = st.expander(label="Dataset metadata", expanded=False)

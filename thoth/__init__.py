@@ -1,5 +1,4 @@
 from thoth import (
-    __metadata__,
     anomaly,
     base,
     profiler,
@@ -13,10 +12,10 @@ from thoth.__metadata__ import (
     __author__,
     __description__,
     __license__,
+    __package_title__,
     __title__,
     __url__,
     __version__,
-    __package_title__
 )
 from thoth.service_layer import (
     Dataset,
@@ -29,6 +28,7 @@ from thoth.service_layer import (
     get_optimization,
     get_scoring,
     init_db,
+    is_db_initialized,
     optimize,
     profile,
     profile_create,
@@ -38,7 +38,6 @@ from thoth.service_layer import (
 )
 
 __all__ = [
-    "__metadata__",
     "anomaly",
     "profiler",
     "quality",
@@ -69,5 +68,6 @@ __all__ = [
     "__title__",
     "__url__",
     "__version__",
-    "__package_title__"
+    "__package_title__",
+    "is_db_initialized",
 ]

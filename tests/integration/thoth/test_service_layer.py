@@ -11,7 +11,6 @@ from thoth.anomaly.optimization import AnomalyOptimization, MetricOptimization
 from thoth.dataset import Dataset
 from thoth.profiler import Granularity, Metric, ProfilingBuilder
 from thoth.quality import LogHandler
-from thoth.service_layer import ThothServiceError
 
 
 def test__build_repo_error():
@@ -26,6 +25,16 @@ def test__build_repo_with_session(session):
 
     # assert
     isinstance(output, repository.SqlRepository)
+
+
+def test_init_db():
+    engine = service_layer.build_engine()
+    output = service_layer.is_db_initialized(engine=engine)
+    assert output is False
+
+    service_layer.init_db(engine=engine)
+    output2 = service_layer.is_db_initialized(engine=engine)
+    assert output2 is True
 
 
 def test_assess_quality():
@@ -173,7 +182,7 @@ def test_assess_new_ts_exception():
 
 def test_profile_exception(session):
     # act and assert
-    with pytest.raises(ThothServiceError):
+    with pytest.raises(service_layer.ThothServiceError):
         service_layer.profile(df=None, dataset_uri="not-found", session=session)
 
 

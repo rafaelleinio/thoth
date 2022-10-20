@@ -2,6 +2,7 @@ import datetime
 import os
 from typing import List, Optional, Tuple
 
+import sqlalchemy
 from loguru import logger
 from pyspark.sql import DataFrame, SparkSession
 from sqlalchemy.future import Engine as _FutureEngine
@@ -31,6 +32,13 @@ def init_db(engine: Optional[_FutureEngine] = None, clear: bool = False) -> None
     if clear:
         SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
+    pass
+
+
+def is_db_initialized(engine: Optional[_FutureEngine] = None) -> bool:
+    """Check if the Metrics Repository is ready to be queried."""
+    engine = engine or build_engine()
+    return sqlalchemy.inspect(engine).has_table("dataset")
 
 
 def _build_repo(
