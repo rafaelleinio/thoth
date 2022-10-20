@@ -1,5 +1,6 @@
 wheel
 jupyter
+twine
 
 # test
 pytest
