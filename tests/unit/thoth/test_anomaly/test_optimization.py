@@ -202,6 +202,7 @@ def test__optimize_time_series_constant_flow():
             models={AutoSarimaModel.__name__: AutoSarimaModel}
         ),
         start_proportion=0.5,
+        min_threshold=0.01,
     )
 
     # assert

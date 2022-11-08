@@ -249,6 +249,7 @@ def optimize(
     start_proportion: Optional[float] = None,
     target_confidence: Optional[float] = None,
     model_factory: Optional[anomaly.BaseModelFactory] = None,
+    min_threshold: Optional[float] = None,
     repo: Optional[repository.AbstractRepository] = None,
     session: Optional[Session] = None,
 ) -> anomaly.AnomalyOptimization:
@@ -264,12 +265,21 @@ def optimize(
             expect from the next batches of data. In this way, this attribute can be
             helpful in prioritizing only the most recent patterns.
         start_proportion: start proportion for the cross validation algorithm.
-            0.5 by default, meaning it validates sequentially half of the series points.
+            E.g. giving the value 0.5 mean it validates sequentially half of the given
+            profiling points. The default strategy is defined by the function
+            _find_start_proportion. If you give a value it will overwrite the
+            automatic approach.
         target_confidence: main objective for the optimization.
-            0.95 by default, meaning that it will try to automatically find a model and
+            0.99 by default, meaning that it will try to automatically find a model and
             threshold for each metric on the dataset in which no more than 5% of the
             points have higher anomaly scores than the resulting threshold.
         model_factory: factory defining all the models to be evaluated.
+        min_threshold: minimum threshold to force optimization to set.
+            If the optimization algorithm can find a threshold that satisfies the target
+            confidence, and it's smaller than the min_threshold, the min_threshold is
+            used instead. This is useful to avoid over-optimization.
+            The default value is 0.1, so no score smaller than 0.1 should raise anomaly
+            warnings.
         repo: repository to save the resulting optimization.
         session: sql session to be used by the repository.
 
@@ -284,6 +294,7 @@ def optimize(
         start_proportion=start_proportion,
         confidence=target_confidence,
         model_factory=model_factory,
+        min_threshold=min_threshold,
     )
     repo.add_optimization(optimization=optimization)
     url = util.dashboard.build_dashboard_link(
@@ -396,6 +407,7 @@ def profile_create_optimize(
     optimize_start_proportion: Optional[float] = None,
     optimize_target_confidence: Optional[float] = None,
     model_factory: Optional[anomaly.BaseModelFactory] = None,
+    min_threshold: Optional[float] = None,
     repo: Optional[repository.AbstractRepository] = None,
     session: Optional[Session] = None,
     spark: Optional[SparkSession] = None,
@@ -426,6 +438,7 @@ def profile_create_optimize(
         start_proportion=optimize_start_proportion,
         target_confidence=optimize_target_confidence,
         model_factory=model_factory,
+        min_threshold=min_threshold,
         repo=repo,
         session=session,
     )

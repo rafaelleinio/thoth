@@ -65,7 +65,7 @@ def _score_model(
     score_value = Score(
         metric=metric_optimization.metric, value=error, predicted=predicted
     )
-    logger.info(f"Metric score done! Value={score_value.value}")
+    logger.info(f"Metric score done! Score={score_value.value}, Forecast={predicted}")
     return score_value
 
 

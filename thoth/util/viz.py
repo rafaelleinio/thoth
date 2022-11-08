@@ -97,8 +97,10 @@ def plot_predicted_values(
     x_predicted = [point.ts for point in predicted_points]
     min_ts = x_predicted[0]
     y_predicted = [point.value for point in predicted_points]
-    y_predicted_upper = [y * (1 + threshold) for y in y_predicted]
-    y_predicted_lower = [y * (1 - threshold) for y in y_predicted]
+    # y_predicted_upper = [y * (1 + threshold) for y in y_predicted]
+    # y_predicted_lower = [y * (1 - threshold) for y in y_predicted]
+    y_predicted_upper = [y / (1 - threshold) for y in y_predicted]
+    y_predicted_lower = [y / (1 + threshold) for y in y_predicted]
     x_observed = [point.ts for point in observed_points if point.ts >= min_ts]
     y_observed = [point.value for point in observed_points if point.ts >= min_ts]
 

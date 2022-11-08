@@ -296,8 +296,9 @@ class SqlRepository(AbstractRepository):
     ) -> List[ProfilingReport]:
         return self.session.exec(
             select(ProfilingReport).where(
-                ProfilingReport.dataset_uri == dataset_uri
-                and start_ts <= ProfilingReport.ts <= end_ts
+                ProfilingReport.dataset_uri == dataset_uri,
+                start_ts <= ProfilingReport.ts,
+                ProfilingReport.ts <= end_ts,
             )
         ).all()
 
@@ -311,8 +312,9 @@ class SqlRepository(AbstractRepository):
     ) -> List[AnomalyScoring]:
         return self.session.exec(
             select(AnomalyScoring).where(
-                AnomalyScoring.dataset_uri == dataset_uri
-                and start_ts <= AnomalyScoring.ts <= end_ts
+                AnomalyScoring.dataset_uri == dataset_uri,
+                start_ts <= AnomalyScoring.ts,
+                AnomalyScoring.ts <= end_ts,
             )
         ).all()
 

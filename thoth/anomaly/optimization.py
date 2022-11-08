@@ -223,6 +223,7 @@ def _optimize_time_series(
     confidence: float,
     model_factory: BaseModelFactory,
     start_proportion: float,
+    min_threshold: float,
 ) -> MetricOptimization:
     logger.info(f"Optimizing for metric = {ts.metric} started...")
     if _is_time_series_constant(ts):
@@ -242,13 +243,21 @@ def _optimize_time_series(
         validation_time_series, confidence, ts.metric
     )
 
-    logger.info(f"Optimizing for metric = {ts.metric} finished!")
-    return MetricOptimization(
+    if best_model_threshold.threshold < min_threshold:
+        logger.debug(
+            "Threshold found is smaller than optimization min_threshold, "
+            f"using {min_threshold} instead of {best_model_threshold.threshold}"
+        )
+    threshold = max(best_model_threshold.threshold, min_threshold)
+
+    metric_optimization = MetricOptimization(
         metric=ts.metric,
         best_model_name=best_model_threshold.model_name,
-        threshold=best_model_threshold.threshold,
+        threshold=threshold,
         validation_results=validation_time_series,
     )
+    logger.info(f"Optimizing for metric = {ts.metric} finished!")
+    return metric_optimization
 
 
 def get_last_n(
@@ -259,20 +268,38 @@ def get_last_n(
     return profiling_history[-n:]
 
 
+def _find_start_proportion(profiling_length: int) -> float:
+    if profiling_length >= 100:
+        return 0.1
+
+    if profiling_length >= 50:
+        return 0.2
+
+    if profiling_length >= 25:
+        return 0.4
+
+    return 0.8
+
+
 def optimize(
     profiling_history: List[ProfilingReport],
     start_proportion: Optional[float] = None,
     confidence: Optional[float] = None,
     model_factory: Optional[BaseModelFactory] = None,
     last_n: Optional[int] = None,
+    min_threshold: Optional[float] = None,
 ) -> AnomalyOptimization:
     """Optimize the anomaly strategy for a given dataset using its profiling history."""
     logger.info("📈️ Optimization started ...")
-    confidence = confidence or 0.95
+    confidence = confidence or 0.99
 
     last_n_profiling_history = get_last_n(
         profiling_history=profiling_history, last_n=last_n
     )
+    start_proportion = start_proportion or _find_start_proportion(
+        profiling_length=len(last_n_profiling_history)
+    )
+
     last_profiling_report = last_n_profiling_history[-1]
     time_series = convert_to_timeseries(last_n_profiling_history)
 
@@ -281,7 +308,8 @@ def optimize(
             ts=ts,
             confidence=confidence,
             model_factory=model_factory or DefaultModelFactory(),
-            start_proportion=start_proportion or 0.5,
+            start_proportion=start_proportion,
+            min_threshold=min_threshold or 0.1,
         )
         for ts in time_series
     ]
