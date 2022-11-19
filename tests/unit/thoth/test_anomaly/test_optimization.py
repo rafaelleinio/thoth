@@ -10,6 +10,7 @@ from thoth.anomaly.optimization import (
     ValidationPoint,
     ValidationTimeSeries,
     _find_best_threshold,
+    _find_start_proportion,
     _optimize_time_series,
     _select_best_model,
     _ThresholdProportion,
@@ -232,3 +233,9 @@ class TestAnomalyOptimization:
 
         # assert
         assert output == target
+
+
+def test__find_start_proportion():
+    assert _find_start_proportion(100) == 0.1
+    assert _find_start_proportion(50) == 0.2
+    assert _find_start_proportion(25) == 0.4
