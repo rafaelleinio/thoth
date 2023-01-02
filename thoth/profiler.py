@@ -14,11 +14,7 @@ from pydeequ.analyzers import (
     ApproxQuantiles,
     Completeness,
     CountDistinct,
-    Maximum,
-    MaxLength,
     Mean,
-    Minimum,
-    MinLength,
     Size,
     StandardDeviation,
     _AnalyzerObject,
@@ -98,8 +94,6 @@ class DefaultProfilingBuilder(ProfilingBuilder):
                     analyzers=[
                         Mean,
                         StandardDeviation,
-                        Maximum,
-                        Minimum,
                         functools.partial(  # type: ignore
                             ApproxQuantiles, quantiles=[0.25, 0.5, 0.75]
                         ),
@@ -107,17 +101,11 @@ class DefaultProfilingBuilder(ProfilingBuilder):
                 ),
                 Type2Analyzers(
                     data_type=DataType,
-                    analyzers=[
-                        Completeness,
-                    ],
+                    analyzers=[Completeness],
                 ),
                 Type2Analyzers(
                     data_type=StringType,
-                    analyzers=[
-                        MinLength,
-                        MaxLength,
-                        CountDistinct,
-                    ],
+                    analyzers=[CountDistinct],
                 ),
             ],
             analyzers=[Size()],
