@@ -36,13 +36,9 @@ class TestProfilingBuilder:
         target_analyzers = [
             analyzers.Mean("f1"),
             analyzers.StandardDeviation("f1"),
-            analyzers.Maximum("f1"),
-            analyzers.Minimum("f1"),
             analyzers.ApproxQuantiles("f1", quantiles=[0.25, 0.5, 0.75]),
             analyzers.Completeness("f1"),
             analyzers.Completeness("f2"),
-            analyzers.MinLength("f2"),
-            analyzers.MaxLength("f2"),
             analyzers.CountDistinct("f2"),
             analyzers.Size(),
         ]
